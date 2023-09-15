@@ -2165,7 +2165,8 @@ static AOM_INLINE void init_winner_mode_sf(
   winner_mode_sf->prune_winner_mode_eval_level = 0;
 }
 
-static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf) {
+static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf, AV1EncoderConfig *oxcf) {
+  const TuneCfg *tune_params = &oxcf->tune_cfg;
   lpf_sf->disable_loop_restoration_chroma = 0;
   lpf_sf->disable_loop_restoration_luma = 0;
   lpf_sf->min_lr_unit_size = RESTORATION_PROC_UNIT_SIZE;
@@ -2180,7 +2181,11 @@ static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf) {
   // Set decoder side speed feature to use less dual sgr modes
   lpf_sf->dual_sgr_penalty_level = 0;
   // Enable Wiener and Self-guided Loop restoration filters by default.
-  lpf_sf->disable_wiener_filter = false;
+  if (tune_params->content == AOM_CONTENT_PSY) {
+    lpf_sf->disable_wiener_filter = true;
+  } else {
+    lpf_sf->disable_wiener_filter = false;
+  }
   lpf_sf->disable_sgr_filter = false;
   lpf_sf->disable_wiener_coeff_refine_search = false;
   lpf_sf->use_downsampled_wiener_stats = 0;
@@ -2336,7 +2341,7 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
   init_tx_sf(&sf->tx_sf);
   init_rd_sf(&sf->rd_sf, oxcf);
   init_winner_mode_sf(&sf->winner_mode_sf);
-  init_lpf_sf(&sf->lpf_sf);
+  init_lpf_sf(&sf->lpf_sf, oxcf);
   init_rt_sf(&sf->rt_sf);
 
   switch (oxcf->mode) {
@@ -2379,7 +2384,7 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
         (sf->inter_sf.use_dist_wtd_comp_flag != DIST_WTD_COMP_DISABLED);
     cpi->common.seq_params->enable_dual_filter &=
         !sf->interp_sf.disable_dual_filter;
-    // Set the flag 'enable_restoration', if one the Loop restoration filters
+    // Set the flag 'enable_restoration', if one of the Loop restoration filters
     // (i.e., Wiener or Self-guided) is enabled.
     cpi->common.seq_params->enable_restoration &=
         (!sf->lpf_sf.disable_wiener_filter || !sf->lpf_sf.disable_sgr_filter);
