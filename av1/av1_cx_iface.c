@@ -333,7 +333,7 @@ static const struct av1_extracfg default_extra_cfg = {
 #if CONFIG_DENOISE
   0,   // noise_level
   32,  // noise_block_size
-  1,   // enable_dnl_denoising
+  0,   // enable_dnl_denoising
 #endif
   0,  // chroma_subsampling_x
   0,  // chroma_subsampling_y
@@ -489,7 +489,7 @@ static const struct av1_extracfg default_extra_cfg = {
 #if CONFIG_DENOISE
   0,   // noise_level
   32,  // noise_block_size
-  1,   // enable_dnl_denoising
+  0,   // enable_dnl_denoising
 #endif
   0,   // chroma_subsampling_x
   0,   // chroma_subsampling_y
