@@ -252,7 +252,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,                                          // rc_max_inter_bitrate_pct
   0,                                          // gf_cbr_boost_pct
   0,                                          // lossless
-  1,                                          // enable_cdef
+  0,                                          // enable_cdef
   0,                                          // enable_restoration
   0,                                          // force_video_mode
   0,                                          // enable_obmc
@@ -408,7 +408,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,                                          // rc_max_inter_bitrate_pct
   0,                                          // gf_cbr_boost_pct
   0,                                          // lossless
-  1,                                          // enable_cdef
+  0,                                          // enable_cdef
   1,                                          // enable_restoration
   0,                                          // force_video_mode
   1,                                          // enable_obmc
