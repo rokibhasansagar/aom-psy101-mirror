@@ -589,7 +589,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "Min height for GF group pyramid structure (0..5), default is 0"),
   .gf_max_pyr_height = ARG_DEF(
       NULL, "gf-max-pyr-height", 1,
-      "Maximum height for GF group pyramid structure (0..5 (default))"),
+      "Maximum height for GF group pyramid structure (0..5), default is 4"),
   .max_reference_frames = ARG_DEF(NULL, "max-reference-frames", 1,
                                   "Maximum number of reference frames allowed "
                                   "per frame (3..7 (default))"),
