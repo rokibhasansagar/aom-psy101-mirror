@@ -235,7 +235,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
   5,              // gf_max_pyr_height
-  AOM_TUNE_PSNR,  // tuning
+  AOM_TUNE_SSIM,  // tuning
   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
   ".",                                        // partition info path
   0,                                          // enable rate guide deltaq
@@ -386,7 +386,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
   5,              // gf_max_pyr_height
-  AOM_TUNE_PSNR,  // tuning
+  AOM_TUNE_SSIM,  // tuning
   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
   ".",                                        // partition info path
   0,                                          // enable rate guide deltaq
