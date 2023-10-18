@@ -538,7 +538,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "denoise-noise-level", 1,
               "Amount of noise (from 0 = don't denoise, to 50)"),
   .denoise_block_size = ARG_DEF(NULL, "denoise-block-size", 1,
-                                "Denoise block size (default = 32)"),
+                                "Denoise block size (default = 16)"),
   .enable_dnl_denoising = ARG_DEF(NULL, "enable-dnl-denoising", 1,
                                   "Apply denoising to the frame "
                                   "being encoded when denoise-noise-level is "
