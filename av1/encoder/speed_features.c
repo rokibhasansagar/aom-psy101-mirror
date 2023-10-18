@@ -441,7 +441,7 @@ static void set_allintra_speed_features_framesize_independent(
     // For screen content, "prune_sgr_based_on_wiener = 2" cause large quality
     // loss.
     sf->lpf_sf.prune_sgr_based_on_wiener = allow_screen_content_tools ? 1 : 2;
-    sf->lpf_sf.disable_loop_restoration_chroma = 0;
+    sf->lpf_sf.disable_loop_restoration_chroma = 1;
     sf->lpf_sf.reduce_wiener_window_size = 1;
     sf->lpf_sf.prune_wiener_based_on_src_var = 2;
   }
@@ -1087,7 +1087,6 @@ static void set_good_speed_features_framesize_independent(
 
     sf->lpf_sf.prune_wiener_based_on_src_var = 1;
     sf->lpf_sf.prune_sgr_based_on_wiener = 1;
-    sf->lpf_sf.disable_loop_restoration_chroma = boosted ? 0 : 1;
     sf->lpf_sf.reduce_wiener_window_size = boosted ? 0 : 1;
 
     // TODO(any): Re-evaluate this feature set to 1 in speed 2.
