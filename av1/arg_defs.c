@@ -306,7 +306,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
 #if CONFIG_AV1_ENCODER
   .cpu_used_av1 = ARG_DEF(NULL, "cpu-used", 1,
                           "Speed setting (0..9 in good mode, 5..11 in realtime "
-                          "mode, 0..9 in all intra mode)"),
+                          "mode, 0..9 in all intra mode), default in good mode is 4"),
   .rowmtarg =
       ARG_DEF(NULL, "row-mt", 1,
               "Enable row based multi-threading (0: off, 1: on (default))"),
