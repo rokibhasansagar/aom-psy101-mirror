@@ -291,7 +291,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .auto_altref =
       ARG_DEF(NULL, "auto-alt-ref", 1, "Enable automatic alt reference frames"),
   .arnr_maxframes =
-      ARG_DEF(NULL, "arnr-maxframes", 1, "AltRef max frames (0..15)"),
+      ARG_DEF(NULL, "arnr-maxframes", 1, "AltRef max frames (0..15 (default))"),
   .arnr_strength =
       ARG_DEF(NULL, "arnr-strength", 1, "AltRef filter strength (0..4), default is 2"),
   .tune_metric = ARG_DEF_ENUM(NULL, "tune", 1, "Distortion metric tuned with",
