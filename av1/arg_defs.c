@@ -363,7 +363,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                 "(0: false, 1: true (default))"),
   .enable_chroma_deltaq = ARG_DEF(NULL, "enable-chroma-deltaq", 1,
                                   "Enable chroma delta quant "
-                                  "(0: false (default), 1: true)"),
+                                  "(0: false, 1: true (default))"),
   .enable_intra_edge_filter = ARG_DEF(NULL, "enable-intra-edge-filter", 1,
                                       "Enable intra edge filtering "
                                       "(0: false, 1: true (default))"),

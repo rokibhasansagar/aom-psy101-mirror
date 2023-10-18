@@ -262,7 +262,7 @@ static const struct av1_extracfg default_extra_cfg = {
   AOM_TIMING_UNSPECIFIED,       // No picture timing signaling in bitstream
   0,                            // frame_parallel_decoding_mode
   1,                            // enable dual filter
-  0,                            // enable delta quant in chroma planes
+  1,                            // enable delta quant in chroma planes
   NO_AQ,                        // aq_mode
   NO_DELTA_Q,                   // deltaq_mode
   100,                          // deltaq_strength
@@ -413,7 +413,7 @@ static const struct av1_extracfg default_extra_cfg = {
   AOM_TIMING_UNSPECIFIED,       // No picture timing signaling in bitstream
   0,                            // frame_parallel_decoding_mode
   1,                            // enable dual filter
-  0,                            // enable delta quant in chroma planes
+  1,                            // enable delta quant in chroma planes
   NO_AQ,                        // aq_mode
   DELTA_Q_OBJECTIVE,            // deltaq_mode
   100,                          // deltaq_strength
