@@ -198,7 +198,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                         "Chroma subsampling y value"),
 
   .usage = ARG_DEF("u", "usage", 1,
-                   "Usage profile number to use (0: good, 1: rt, 2: allintra)"),
+                   "Usage profile number to use (0: good (default), 1: rt, 2: allintra)"),
   .threads = ARG_DEF("t", "threads", 1, "Max number of threads to use"),
   .profile = ARG_DEF(NULL, "profile", 1, "Bitstream profile number to use"),
   .width = ARG_DEF("w", "width", 1, "Frame width"),
@@ -269,11 +269,12 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .maxsection_pct =
       ARG_DEF(NULL, "maxsection-pct", 1, "GOP max bitrate (% of target)"),
   .fwd_kf_enabled =
-      ARG_DEF(NULL, "enable-fwd-kf", 1, "Enable forward reference keyframes"),
+      ARG_DEF(NULL, "enable-fwd-kf", 1, "Enable forward reference keyframes "
+              "(0: off (default), 1: on)"),
   .kf_min_dist =
       ARG_DEF(NULL, "kf-min-dist", 1, "Minimum keyframe interval (frames)"),
   .kf_max_dist =
-      ARG_DEF(NULL, "kf-max-dist", 1, "Maximum keyframe interval (frames)"),
+      ARG_DEF(NULL, "kf-max-dist", 1, "Maximum keyframe interval (frames), default is 9999"),
   .kf_disabled = ARG_DEF(NULL, "disable-kf", 0, "Disable keyframe placement"),
   .sframe_dist = ARG_DEF(NULL, "sframe-dist", 1, "S-Frame interval (frames)"),
   .sframe_mode =
@@ -292,7 +293,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .arnr_maxframes =
       ARG_DEF(NULL, "arnr-maxframes", 1, "AltRef max frames (0..15)"),
   .arnr_strength =
-      ARG_DEF(NULL, "arnr-strength", 1, "AltRef filter strength (0..6)"),
+      ARG_DEF(NULL, "arnr-strength", 1, "AltRef filter strength (0..4)"),
   .tune_metric = ARG_DEF_ENUM(NULL, "tune", 1, "Distortion metric tuned with",
                               tuning_enum),
   .dist_metric = ARG_DEF_ENUM(
@@ -304,7 +305,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "max-intra-rate", 1, "Max I-frame bitrate (pct)"),
 #if CONFIG_AV1_ENCODER
   .cpu_used_av1 = ARG_DEF(NULL, "cpu-used", 1,
-                          "Speed setting (0..6 in good mode, 5..11 in realtime "
+                          "Speed setting (0..9 in good mode, 5..11 in realtime "
                           "mode, 0..9 in all intra mode)"),
   .rowmtarg =
       ARG_DEF(NULL, "row-mt", 1,
@@ -459,9 +460,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "enable-qm", 1,
               "Enable quantisation matrices (0: false (default), 1: true)"),
   .qm_min = ARG_DEF(NULL, "qm-min", 1,
-                    "Min quant matrix flatness (0..15), default is 8"),
+                    "Min quant matrix flatness (0..15), default is 5"),
   .qm_max = ARG_DEF(NULL, "qm-max", 1,
-                    "Max quant matrix flatness (0..15), default is 15"),
+                    "Max quant matrix flatness (0..15), default is 9"),
   .reduced_tx_type_set = ARG_DEF(NULL, "reduced-tx-type-set", 1,
                                  "Use reduced set of transform types"),
   .use_intra_dct_only =
@@ -545,9 +546,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .deltaq_mode =
       ARG_DEF(NULL, "deltaq-mode", 1,
               "Delta qindex mode (0: off, 1: deltaq objective (default), "
-              "2: deltaq placeholder, 3: key frame visual quality, 4: user "
-              "rating based visual quality optimization); "
-              "requires --enable-tpl-model=1"),
+              "2: deltaq perceptual, 3: key frame visual quality, "
+              "4: user rating based visual quality optimization, "
+              "5: HDR optimization); "
+              "deltaq modes 1/2 require --enable-tpl-model=1"),
+
   .deltaq_strength = ARG_DEF(NULL, "deltaq-strength", 1,
                              "Deltaq strength for"
                              " --deltaq-mode=4 (%)"),
@@ -568,13 +571,13 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       "Max gf/arf frame interval (default 0, indicating in-built behavior)"),
   .gf_min_pyr_height =
       ARG_DEF(NULL, "gf-min-pyr-height", 1,
-              "Min height for GF group pyramid structure (0 (default) to 5)"),
+              "Min height for GF group pyramid structure (0..5), default is 0"),
   .gf_max_pyr_height = ARG_DEF(
       NULL, "gf-max-pyr-height", 1,
-      "Maximum height for GF group pyramid structure (0 to 5 (default))"),
+      "Maximum height for GF group pyramid structure (0..5 (default))"),
   .max_reference_frames = ARG_DEF(NULL, "max-reference-frames", 1,
                                   "Maximum number of reference frames allowed "
-                                  "per frame (3 to 7 (default))"),
+                                  "per frame (3..7 (default))"),
   .reduced_reference_set =
       ARG_DEF(NULL, "reduced-reference-set", 1,
               "Use reduced set of single and compound references (0: off "
@@ -692,7 +695,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .kf_max_pyr_height = ARG_DEF(
       NULL, "kf-max-pyr-height", 1,
       "Maximum height of pyramid structure used for the GOP starting with a "
-      "key frame (-1 to 5). When set to -1 (default), it does not have any "
+      "key frame (-1..5). When set to -1 (default), it does not have any "
       "effect. The actual maximum pyramid height will be the minimum of this "
       "value and the value of gf_max_pyr_height."),
   .sb_qp_sweep =

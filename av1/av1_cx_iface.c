@@ -230,7 +230,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // enable_tpl_model
   1,              // enable_keyframe_filtering
   7,              // arnr_max_frames
-  5,              // arnr_strength
+  4,              // arnr_strength
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
@@ -381,7 +381,7 @@ static const struct av1_extracfg default_extra_cfg = {
   1,              // enable_tpl_model
   1,              // enable_keyframe_filtering
   7,              // arnr_max_frames
-  5,              // arnr_strength
+  4,              // arnr_strength
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
@@ -735,7 +735,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 
   RANGE_CHECK_HI(extra_cfg, sharpness, 7);
   RANGE_CHECK_HI(extra_cfg, arnr_max_frames, 15);
-  RANGE_CHECK_HI(extra_cfg, arnr_strength, 6);
+  RANGE_CHECK_HI(extra_cfg, arnr_strength, 4);
   RANGE_CHECK_HI(extra_cfg, cq_level, 63);
   RANGE_CHECK(cfg, g_bit_depth, AOM_BITS_8, AOM_BITS_12);
   RANGE_CHECK(cfg, g_input_bit_depth, 8, 12);
