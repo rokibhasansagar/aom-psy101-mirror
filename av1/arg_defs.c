@@ -472,7 +472,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .use_intra_default_tx_only =
       ARG_DEF(NULL, "use-intra-default-tx-only", 1,
               "Use Default-transform only for INTRA modes"),
-  .quant_b_adapt = ARG_DEF(NULL, "quant-b-adapt", 1, "Use adaptive quantize_b"),
+  .quant_b_adapt = ARG_DEF(NULL, "quant-b-adapt", 1, "Use adaptive quantize_b "
+                           "(0: false, 1: true (default))"),
   .coeff_cost_upd_freq = ARG_DEF(NULL, "coeff-cost-upd-freq", 1,
                                  "Update freq for coeff costs. "
                                  "0: SB, 1: SB Row per Tile, 2: Tile, 3: Off"),

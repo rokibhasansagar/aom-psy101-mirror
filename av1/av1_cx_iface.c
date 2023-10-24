@@ -336,7 +336,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,  // use_inter_dct_only
   0,  // use_intra_default_tx_only
   1,  // enable_tx_size_search
-  0,  // quant_b_adapt
+  1,  // quant_b_adapt
   0,  // vbr_corpus_complexity_lap
   {
       SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX,
@@ -487,7 +487,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,   // use_inter_dct_only
   0,   // use_intra_default_tx_only
   1,   // enable_tx_size_search
-  0,   // quant_b_adapt
+  1,   // quant_b_adapt
   0,   // vbr_corpus_complexity_lap
   {
       SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX,
