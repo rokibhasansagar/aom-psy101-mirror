@@ -257,7 +257,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,                                          // force_video_mode
   0,                                          // enable_obmc
   3,                                          // disable_trellis_quant
-  0,                                          // enable_qm
+  -1,                                         // enable_qm (placeholder default)
   DEFAULT_QM_Y,                               // qm_y
   DEFAULT_QM_U,                               // qm_u
   DEFAULT_QM_V,                               // qm_v
@@ -413,7 +413,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,                                          // force_video_mode
   1,                                          // enable_obmc
   3,                                          // disable_trellis_quant
-  0,                                          // enable_qm
+  -1,                                         // enable_qm (placeholder default)
   DEFAULT_QM_Y,                               // qm_y
   DEFAULT_QM_U,                               // qm_u
   DEFAULT_QM_V,                               // qm_v
@@ -1205,7 +1205,16 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
       extra_cfg->frame_parallel_decoding_mode;
 
   // Set Quantization related configuration.
-  q_cfg->using_qm = extra_cfg->enable_qm;
+  
+  if (oxcf->mode == ALLINTRA && extra_cfg->enable_qm == -1) {
+  // Set default allintra enable_qm
+    q_cfg->using_qm = 0;
+  } else if (extra_cfg->enable_qm == -1) {
+  // Set default non-allintra enable_qm
+    q_cfg->using_qm = 1;
+  } else {
+    q_cfg->using_qm = extra_cfg->enable_qm;
+  }
   q_cfg->qm_minlevel = extra_cfg->qm_min;
   q_cfg->qm_maxlevel = extra_cfg->qm_max;
   q_cfg->quant_b_adapt = extra_cfg->quant_b_adapt;

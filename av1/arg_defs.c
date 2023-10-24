@@ -461,7 +461,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       "(default))"),
   .enable_qm =
       ARG_DEF(NULL, "enable-qm", 1,
-              "Enable quantisation matrices (0: false (default), 1: true)"),
+              "Enable quantisation matrices (0: false, 1: true), "
+              "default is 0 for allintra mode, 1 for good and realtime modes"),
   .qm_min = ARG_DEF(NULL, "qm-min", 1,
                     "Min quant matrix flatness (0..15), default is 5"),
   .qm_max = ARG_DEF(NULL, "qm-max", 1,
