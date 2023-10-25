@@ -272,7 +272,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "enable-fwd-kf", 1, "Enable forward reference keyframes "
               "(0: off (default), 1: on)"),
   .kf_min_dist =
-      ARG_DEF(NULL, "kf-min-dist", 1, "Minimum keyframe interval (frames)"),
+      ARG_DEF(NULL, "kf-min-dist", 1, "Minimum keyframe interval (frames), default is 12"),
   .kf_max_dist =
       ARG_DEF(NULL, "kf-max-dist", 1, "Maximum keyframe interval (frames), default is 9999"),
   .kf_disabled = ARG_DEF(NULL, "disable-kf", 0, "Disable keyframe placement"),
