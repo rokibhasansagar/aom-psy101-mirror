@@ -186,6 +186,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t vmaf_model_path;
   arg_def_t vmaf_quantization;
   arg_def_t vmaf_preprocessing;
+  arg_def_t vmaf_motion_mult;
 #endif
   arg_def_t partition_info_path;
   arg_def_t enable_rate_guide_deltaq;

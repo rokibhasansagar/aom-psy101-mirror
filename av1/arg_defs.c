@@ -511,6 +511,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                 "                                        0 - Off, "
                                 "1 - VMAF Block-based NEG, 2 - VMAF Block-based, "
                                 "3 - VMAF Frame-based"),
+  .vmaf_motion_mult = ARG_DEF(NULL, "vmaf-motion-mult", 1,
+                              "Multiplier for VMAF motion compensation "
+                              "(only active with VMAF tunes, defaults to 100)"),
 #endif
   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
                                  "Partition information read and write path"),

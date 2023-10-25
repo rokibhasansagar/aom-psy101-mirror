@@ -1545,6 +1545,9 @@ enum aome_enc_control_id {
   /*!\brief Control VMAF Preprocessing */
   AOME_SET_VMAF_PREPROCESSING = 167,
 
+  /*!\brief Control VMAF motion compensation */
+  AOME_SET_VMAF_MOTION_MULT = 168,
+
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
   // No encoder control ID should be added below.
@@ -2202,6 +2205,9 @@ AOM_CTRL_USE_TYPE(AOME_SET_VMAF_QUANTIZATION, int)
 
 AOM_CTRL_USE_TYPE(AOME_SET_VMAF_PREPROCESSING, int)
 #define AOM_CTRL_AOME_SET_VMAF_PREPROCESSING
+
+AOM_CTRL_USE_TYPE(AOME_SET_VMAF_MOTION_MULT, int)
+#define AOM_CTRL_AOME_SET_VMAF_MOTION_MULT
 
 /*!\endcond */
 /*! @} - end defgroup aom_encoder */
