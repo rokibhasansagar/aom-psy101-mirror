@@ -503,6 +503,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
 #if CONFIG_TUNE_VMAF
   .vmaf_model_path =
       ARG_DEF(NULL, "vmaf-model-path", 1, "Path to the VMAF model file"),
+  .vmaf_quantization = ARG_DEF(NULL, "vmaf-quantization", 1,
+                               "Force instance of VMAF quantization ((0)..1)\n"
+                               "                                        0 - Off, 1 - On"),
 #endif
   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
                                  "Partition information read and write path"),

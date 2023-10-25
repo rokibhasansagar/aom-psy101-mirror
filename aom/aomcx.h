@@ -1539,6 +1539,9 @@ enum aome_enc_control_id {
   /*!\brief Control SSIM rdmult */
   AOME_SET_SSIM_RD_MULT = 165,
 
+  /*!\brief Control VMAF Quantization */
+  AOME_SET_VMAF_QUANTIZATION = 166,
+
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
   // No encoder control ID should be added below.
@@ -2190,6 +2193,9 @@ AOM_CTRL_USE_TYPE(AV1E_SET_BITRATE_ONE_PASS_CBR, unsigned int)
 
 AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
 #define AOM_CTRL_AOME_SET_SSIM_RD_MULT
+
+AOM_CTRL_USE_TYPE(AOME_SET_VMAF_QUANTIZATION, int)
+#define AOM_CTRL_AOME_SET_VMAF_QUANTIZATION
 
 /*!\endcond */
 /*! @} - end defgroup aom_encoder */

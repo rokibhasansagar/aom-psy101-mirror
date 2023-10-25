@@ -202,6 +202,7 @@ struct av1_extracfg {
   int kf_max_pyr_height;
   int sb_qp_sweep;
   int ssim_rd_mult;
+  int vmaf_quantization;
 };
 
 #if CONFIG_REALTIME_ONLY
@@ -369,6 +370,7 @@ static const struct av1_extracfg default_extra_cfg = {
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
   100,             // ssim_rd_mult
+  0,               // vmaf_quantization
 };
 #else
 static const struct av1_extracfg default_extra_cfg = {
@@ -522,6 +524,7 @@ static const struct av1_extracfg default_extra_cfg = {
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
   100,             // ssim_rd_mult
+  0,               // vmaf_quantization
 };
 #endif
 
@@ -827,8 +830,9 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 #endif
 
 #if !CONFIG_TUNE_VMAF
-  if (extra_cfg->tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-      extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+  if ((extra_cfg->tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+      extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+      extra_cfg->vmaf_quantization == 1) {
     ERROR(
         "This error may be related to the wrong configuration options: try to "
         "set -DCONFIG_TUNE_VMAF=1 at the time CMake is run.");
@@ -892,6 +896,10 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   }
 
   RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
+
+#if CONFIG_TUNE_VMAF
+  RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
+#endif
 
   return AOM_CODEC_OK;
 }
@@ -1488,6 +1496,10 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   oxcf->sb_qp_sweep = extra_cfg->sb_qp_sweep;
 
   oxcf->ssim_rd_mult = extra_cfg->ssim_rd_mult;
+
+#if CONFIG_TUNE_VMAF
+  oxcf->vmaf_quantization = extra_cfg->vmaf_quantization;
+#endif
 }
 
 AV1EncoderConfig av1_get_encoder_config(const aom_codec_enc_cfg_t *cfg) {
@@ -2998,8 +3010,9 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
   }
 
 #if CONFIG_TUNE_VMAF
-  if (ctx->extra_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-      ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+  if ((ctx->extra_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+      ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+      ctx->extra_cfg.vmaf_quantization == 1) {
     aom_init_vmaf_model(&ppi->cpi->vmaf_info.vmaf_model,
                         ppi->cpi->oxcf.tune_cfg.vmaf_model_path);
   }
@@ -3814,6 +3827,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                             err_string)) {
     err = allocate_and_set_string(value, default_extra_cfg.vmaf_model_path,
                                   &extra_cfg.vmaf_model_path, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_quantization,
+                              argv, err_string)) {
+    extra_cfg.vmaf_quantization = arg_parse_int_helper(&arg, err_string);
   }
 #endif
   else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.partition_info_path,
@@ -4245,6 +4261,13 @@ static aom_codec_err_t ctrl_set_ssim_rd_mult(aom_codec_alg_priv_t *ctx,
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
+static aom_codec_err_t ctrl_set_vmaf_quantization(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.vmaf_quantization = CAST(AOME_SET_VMAF_QUANTIZATION, args);
+  return update_extra_cfg(ctx, &extra_cfg);
+}
+
 static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1_COPY_REFERENCE, ctrl_copy_reference },
   { AOME_USE_REFERENCE, ctrl_use_reference },
@@ -4391,6 +4414,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_QUANTIZER_ONE_PASS, ctrl_set_quantizer_one_pass },
   { AV1E_SET_BITRATE_ONE_PASS_CBR, ctrl_set_bitrate_one_pass_cbr },
   { AOME_SET_SSIM_RD_MULT, ctrl_set_ssim_rd_mult },
+  { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
 
   // Getters
   { AOME_GET_LAST_QUANTIZER, ctrl_get_quantizer },
