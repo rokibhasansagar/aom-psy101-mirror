@@ -1094,6 +1094,8 @@ typedef struct AV1EncoderConfig {
 
   // A flag to control if we enable the superblock qp sweep for a given lambda
   int sb_qp_sweep;
+
+  int ssim_rd_mult;
   /*!\endcond */
 } AV1EncoderConfig;
 

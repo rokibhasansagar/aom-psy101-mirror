@@ -1536,6 +1536,9 @@ enum aome_enc_control_id {
    */
   AOME_SET_QUANT_SHARPNESS = 164,
 
+  /*!\brief Control SSIM rdmult */
+  AOME_SET_SSIM_RD_MULT = 165,
+
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
   // No encoder control ID should be added below.
@@ -2184,6 +2187,9 @@ AOM_CTRL_USE_TYPE(AV1E_GET_LUMA_CDEF_STRENGTH, int *)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_BITRATE_ONE_PASS_CBR, unsigned int)
 #define AOM_CTRL_AV1E_SET_BITRATE_ONE_PASS_CBR
+
+AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
+#define AOM_CTRL_AOME_SET_SSIM_RD_MULT
 
 /*!\endcond */
 /*! @} - end defgroup aom_encoder */

@@ -706,5 +706,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "sb-qp-sweep", 1,
               "When set to 1, enable the superblock level qp sweep for a "
               "given lambda to minimize the rdcost."),
+  .ssim_rd_mult = ARG_DEF(NULL, "ssim-rd-mult", 1,
+              "Multiplier for SSIM rdmult "
+              "(only active with tune ssim, defaults to 100)"),
 #endif  // CONFIG_AV1_ENCODER
 };

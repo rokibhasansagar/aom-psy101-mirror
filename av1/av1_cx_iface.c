@@ -201,6 +201,7 @@ struct av1_extracfg {
   int strict_level_conformance;
   int kf_max_pyr_height;
   int sb_qp_sweep;
+  int ssim_rd_mult;
 };
 
 #if CONFIG_REALTIME_ONLY
@@ -367,6 +368,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // strict_level_conformance
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
+  100,             // ssim_rd_mult
 };
 #else
 static const struct av1_extracfg default_extra_cfg = {
@@ -519,6 +521,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // strict_level_conformance
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
+  100,             // ssim_rd_mult
 };
 #endif
 
@@ -887,6 +890,8 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
         "The value of kf-max-pyr-height should not be smaller than "
         "gf-min-pyr-height");
   }
+
+  RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
 
   return AOM_CODEC_OK;
 }
@@ -1481,6 +1486,8 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   oxcf->kf_max_pyr_height = extra_cfg->kf_max_pyr_height;
 
   oxcf->sb_qp_sweep = extra_cfg->sb_qp_sweep;
+
+  oxcf->ssim_rd_mult = extra_cfg->ssim_rd_mult;
 }
 
 AV1EncoderConfig av1_get_encoder_config(const aom_codec_enc_cfg_t *cfg) {
@@ -4169,6 +4176,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
                               err_string)) {
     ctx->cfg.tile_height_count = arg_parse_list_helper(
         &arg, ctx->cfg.tile_heights, MAX_TILE_HEIGHTS, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_rd_mult,
+                              argv, err_string)) {
+    extra_cfg.ssim_rd_mult = arg_parse_int_helper(&arg, err_string);
   } else {
     match = 0;
     snprintf(err_string, ARG_ERR_MSG_MAX_LEN, "Cannot find aom option %s",
@@ -4226,6 +4236,13 @@ static aom_codec_err_t ctrl_get_luma_cdef_strength(aom_codec_alg_priv_t *ctx,
   memcpy(arg, cm->cdef_info.cdef_strengths, CDEF_MAX_STRENGTHS * sizeof(*arg));
 
   return AOM_CODEC_OK;
+}
+
+static aom_codec_err_t ctrl_set_ssim_rd_mult(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.ssim_rd_mult = CAST(AOME_SET_SSIM_RD_MULT, args);
+  return update_extra_cfg(ctx, &extra_cfg);
 }
 
 static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
@@ -4373,6 +4390,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_RTC_EXTERNAL_RC, ctrl_set_rtc_external_rc },
   { AV1E_SET_QUANTIZER_ONE_PASS, ctrl_set_quantizer_one_pass },
   { AV1E_SET_BITRATE_ONE_PASS_CBR, ctrl_set_bitrate_one_pass_cbr },
+  { AOME_SET_SSIM_RD_MULT, ctrl_set_ssim_rd_mult },
 
   // Getters
   { AOME_GET_LAST_QUANTIZER, ctrl_get_quantizer },
