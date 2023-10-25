@@ -235,6 +235,7 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
 #if CONFIG_TUNE_VMAF
                                         AV1E_SET_VMAF_MODEL_PATH,
                                         AOME_SET_VMAF_QUANTIZATION,
+                                        AOME_SET_VMAF_PREPROCESSING,
 #endif
                                         AV1E_SET_DV_COST_UPD_FREQ,
                                         AV1E_SET_PARTITION_INFO_PATH,
@@ -444,6 +445,7 @@ const arg_def_t *av1_ctrl_args[] = {
 #if CONFIG_TUNE_VMAF
   &g_av1_codec_arg_defs.vmaf_model_path,
   &g_av1_codec_arg_defs.vmaf_quantization,
+  &g_av1_codec_arg_defs.vmaf_preprocessing,
 #endif
   &g_av1_codec_arg_defs.dv_cost_upd_freq,
   &g_av1_codec_arg_defs.partition_info_path,

@@ -1098,6 +1098,9 @@ typedef struct AV1EncoderConfig {
   int ssim_rd_mult;
 
   bool vmaf_quantization;
+
+  int vmaf_preprocessing;
+  bool override_preprocessing;
   /*!\endcond */
 } AV1EncoderConfig;
 

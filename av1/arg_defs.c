@@ -506,6 +506,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .vmaf_quantization = ARG_DEF(NULL, "vmaf-quantization", 1,
                                "Force instance of VMAF quantization ((0)..1)\n"
                                "                                        0 - Off, 1 - On"),
+  .vmaf_preprocessing = ARG_DEF(NULL, "vmaf-preprocessing", 1,
+                                "Force instance of VMAF preprocessing ((0)..3)\n"
+                                "                                        0 - Off, "
+                                "1 - VMAF Block-based NEG, 2 - VMAF Block-based, "
+                                "3 - VMAF Frame-based"),
 #endif
   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
                                  "Partition information read and write path"),

@@ -2800,7 +2800,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest) {
 #endif  // !CONFIG_RD_COMMAND
 
 #if CONFIG_TUNE_VMAF
-  if (oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+  if ((oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1) {
     av1_vmaf_neg_preprocessing(cpi, cpi->unscaled_source);
   }
 #endif
@@ -4076,11 +4076,11 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
 
 #if CONFIG_TUNE_VMAF
   if (!is_stat_generation_stage(cpi) &&
-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING) {
+      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 3)) {
     av1_vmaf_frame_preprocessing(cpi, sd);
   }
   if (!is_stat_generation_stage(cpi) &&
-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN) {
+      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 2)) {
     av1_vmaf_blk_preprocessing(cpi, sd);
   }
 #endif
