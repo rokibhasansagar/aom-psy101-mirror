@@ -1528,6 +1528,14 @@ enum aome_enc_control_id {
    */
   AV1E_SET_BITRATE_ONE_PASS_CBR = 163,
 
+  /*!\brief Codec control function to set the quantization sharpness parameter,
+   * unsigned int parameter.
+   *
+   * Valid range: -7..7. The default is 0. 
+   * Values 1-7 will change quantization in favour of block sharpness.
+   */
+  AOME_SET_QUANT_SHARPNESS = 164,
+
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
   // No encoder control ID should be added below.
@@ -1730,6 +1738,9 @@ AOM_CTRL_USE_TYPE(AOME_SET_ENABLEAUTOALTREF, unsigned int)
 
 AOM_CTRL_USE_TYPE(AOME_SET_SHARPNESS, unsigned int)
 #define AOM_CTRL_AOME_SET_SHARPNESS
+
+AOM_CTRL_USE_TYPE(AOME_SET_QUANT_SHARPNESS, unsigned int)
+#define AOM_CTRL_AOME_SET_QUANT_SHARPNESS
 
 AOM_CTRL_USE_TYPE(AOME_SET_STATIC_THRESHOLD, unsigned int)
 #define AOM_CTRL_AOME_SET_STATIC_THRESHOLD
