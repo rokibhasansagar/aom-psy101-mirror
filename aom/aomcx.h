@@ -1528,25 +1528,31 @@ enum aome_enc_control_id {
    */
   AV1E_SET_BITRATE_ONE_PASS_CBR = 163,
 
+  /*!\brief Codec control to set the maximum number of consecutive frame drops
+   * allowed for the frame dropper in 1 pass CBR mode, int parameter. Value of
+   * zero has no effect.
+   */
+  AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR = 164,
+
   /*!\brief Codec control function to set the quantization sharpness parameter,
    * unsigned int parameter.
    *
    * Valid range: -7..7. The default is 0. 
    * Values 1-7 will change quantization in favour of block sharpness.
    */
-  AOME_SET_QUANT_SHARPNESS = 164,
+  AOME_SET_QUANT_SHARPNESS = 165,
 
   /*!\brief Control SSIM rdmult */
-  AOME_SET_SSIM_RD_MULT = 165,
+  AOME_SET_SSIM_RD_MULT = 166,
 
   /*!\brief Control VMAF Quantization */
-  AOME_SET_VMAF_QUANTIZATION = 166,
+  AOME_SET_VMAF_QUANTIZATION = 167,
 
   /*!\brief Control VMAF Preprocessing */
-  AOME_SET_VMAF_PREPROCESSING = 167,
+  AOME_SET_VMAF_PREPROCESSING = 168,
 
   /*!\brief Control VMAF motion compensation */
-  AOME_SET_VMAF_MOTION_MULT = 168,
+  AOME_SET_VMAF_MOTION_MULT = 169,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -2196,6 +2202,9 @@ AOM_CTRL_USE_TYPE(AV1E_GET_LUMA_CDEF_STRENGTH, int *)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_BITRATE_ONE_PASS_CBR, unsigned int)
 #define AOM_CTRL_AV1E_SET_BITRATE_ONE_PASS_CBR
+
+AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, int)
+#define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR
 
 AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
 #define AOM_CTRL_AOME_SET_SSIM_RD_MULT

@@ -334,7 +334,7 @@ int av1_rc_get_default_min_gf_interval(int width, int height,
                                        double framerate) {
   // Assume we do not need any constraint lower than 4K 20 fps
   static const double factor_safe = 3840 * 2160 * 20.0;
-  const double factor = width * height * framerate;
+  const double factor = (double)width * height * framerate;
   const int default_interval =
       clamp((int)(framerate * 0.125), MIN_GF_INTERVAL, MAX_GF_INTERVAL);
 
@@ -454,14 +454,18 @@ int av1_rc_drop_frame(AV1_COMP *cpi) {
   int64_t buffer_level = p_rc->buffer_level;
 #endif
   // Never drop on key frame, or for frame whose base layer is key.
+  // If drop_count_consec hits or exceeds max_consec_drop then don't drop.
   if (cpi->common.current_frame.frame_type == KEY_FRAME ||
       (cpi->ppi->use_svc &&
        cpi->svc.layer_context[cpi->svc.temporal_layer_id].is_key_frame) ||
-      !oxcf->rc_cfg.drop_frames_water_mark) {
+      !oxcf->rc_cfg.drop_frames_water_mark ||
+      (rc->max_consec_drop > 0 &&
+       rc->drop_count_consec >= rc->max_consec_drop)) {
     return 0;
   } else {
     if (buffer_level < 0) {
       // Always drop if buffer is below 0.
+      rc->drop_count_consec++;
       return 1;
     } else {
       // If buffer is below drop_mark, for now just drop every other frame
@@ -476,6 +480,7 @@ int av1_rc_drop_frame(AV1_COMP *cpi) {
       if (rc->decimation_factor > 0) {
         if (rc->decimation_count > 0) {
           --rc->decimation_count;
+          rc->drop_count_consec++;
           return 1;
         } else {
           rc->decimation_count = rc->decimation_factor;
@@ -2354,6 +2359,7 @@ void av1_rc_postencode_update(AV1_COMP *cpi, uint64_t bytes_used) {
   rc->prev_coded_height = cm->height;
   rc->frame_number_encoded++;
   rc->prev_frame_is_dropped = 0;
+  rc->drop_count_consec = 0;
   // if (current_frame->frame_number == 1 && cm->show_frame)
   /*
   rc->this_frame_target =
@@ -2968,10 +2974,8 @@ static void rc_scene_detection_onepass_rt(AV1_COMP *cpi,
   }
   if (width != cm->render_width || height != cm->render_height ||
       unscaled_src == NULL || unscaled_last_src == NULL) {
-    if (cpi->src_sad_blk_64x64) {
-      aom_free(cpi->src_sad_blk_64x64);
-      cpi->src_sad_blk_64x64 = NULL;
-    }
+    aom_free(cpi->src_sad_blk_64x64);
+    cpi->src_sad_blk_64x64 = NULL;
   }
   if (unscaled_src == NULL || unscaled_last_src == NULL) return;
   src_y = unscaled_src->y_buffer;
@@ -2983,10 +2987,8 @@ static void rc_scene_detection_onepass_rt(AV1_COMP *cpi,
   last_src_width = unscaled_last_src->y_width;
   last_src_height = unscaled_last_src->y_height;
   if (src_width != last_src_width || src_height != last_src_height) {
-    if (cpi->src_sad_blk_64x64) {
-      aom_free(cpi->src_sad_blk_64x64);
-      cpi->src_sad_blk_64x64 = NULL;
-    }
+    aom_free(cpi->src_sad_blk_64x64);
+    cpi->src_sad_blk_64x64 = NULL;
     return;
   }
   rc->high_source_sad = 0;
@@ -3406,7 +3408,7 @@ void av1_get_one_pass_rt_params(AV1_COMP *cpi, FRAME_TYPE *const frame_type,
     if (rc->prev_coded_width == cm->width &&
         rc->prev_coded_height == cm->height) {
       rc_scene_detection_onepass_rt(cpi, frame_input);
-    } else if (cpi->src_sad_blk_64x64) {
+    } else {
       aom_free(cpi->src_sad_blk_64x64);
       cpi->src_sad_blk_64x64 = NULL;
     }

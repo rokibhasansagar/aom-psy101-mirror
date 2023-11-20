@@ -661,6 +661,18 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   if (cfg->g_forced_max_frame_height) {
     RANGE_CHECK_HI(cfg, g_h, cfg->g_forced_max_frame_height);
   }
+  // To avoid integer overflows when multiplying width by height (or values
+  // derived from width and height) using the int type, impose a maximum frame
+  // area (width * height) of 2^30.
+  const unsigned int max_frame_width =
+      cfg->g_forced_max_frame_width ? cfg->g_forced_max_frame_width : cfg->g_w;
+  const unsigned int max_frame_height = cfg->g_forced_max_frame_height
+                                            ? cfg->g_forced_max_frame_height
+                                            : cfg->g_h;
+  const int64_t max_frame_area = (int64_t)max_frame_width * max_frame_height;
+  if (max_frame_area > (1 << 30)) {
+    ERROR("max_frame_area out of range [..2^30]");
+  }
   RANGE_CHECK(cfg, g_timebase.den, 1, 1000000000);
   RANGE_CHECK(cfg, g_timebase.num, 1, cfg->g_timebase.den);
   RANGE_CHECK_HI(cfg, g_profile, MAX_PROFILES - 1);
@@ -2622,6 +2634,17 @@ static aom_codec_err_t ctrl_set_bitrate_one_pass_cbr(aom_codec_alg_priv_t *ctx,
   return AOM_CODEC_OK;
 }
 
+static aom_codec_err_t ctrl_set_max_consec_frame_drop_cbr(
+    aom_codec_alg_priv_t *ctx, va_list args) {
+  AV1_PRIMARY *const ppi = ctx->ppi;
+  AV1_COMP *const cpi = ppi->cpi;
+  const int max_consec_drop = CAST(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, args);
+  if (max_consec_drop < 0) return AOM_CODEC_INVALID_PARAM;
+  cpi->rc.max_consec_drop = max_consec_drop;
+  cpi->rc.drop_count_consec = 0;
+  return AOM_CODEC_OK;
+}
+
 #if !CONFIG_REALTIME_ONLY
 aom_codec_err_t av1_create_stats_buffer(FIRSTPASS_STATS **frame_stats_buffer,
                                         STATS_BUFFER_CTX *stats_buf_context,
@@ -3214,12 +3237,6 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
         cpi->gf_frame_index == ppi->gf_group.size) {
       ppi->num_fp_contexts = av1_compute_num_fp_contexts(ppi, &cpi->oxcf);
     }
-
-    // Reset gf_frame_index in case it reaches MAX_STATIC_GF_GROUP_LENGTH for
-    // real time encoding.
-    if (is_one_pass_rt_params(cpi) &&
-        cpi->gf_frame_index == MAX_STATIC_GF_GROUP_LENGTH)
-      cpi->gf_frame_index = 0;
 
     // Get the next visible frame. Invisible frames get packed with the next
     // visible frame.
@@ -4452,6 +4469,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_RTC_EXTERNAL_RC, ctrl_set_rtc_external_rc },
   { AV1E_SET_QUANTIZER_ONE_PASS, ctrl_set_quantizer_one_pass },
   { AV1E_SET_BITRATE_ONE_PASS_CBR, ctrl_set_bitrate_one_pass_cbr },
+  { AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, ctrl_set_max_consec_frame_drop_cbr },
   { AOME_SET_SSIM_RD_MULT, ctrl_set_ssim_rd_mult },
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },

@@ -1672,7 +1672,7 @@ static AOM_INLINE int is_same_gf_and_last_scale(AV1_COMMON *cm) {
 
 static AOM_INLINE void get_ref_frame_use_mask(AV1_COMP *cpi, MACROBLOCK *x,
                                               MB_MODE_INFO *mi, int mi_row,
-                                              int mi_col, int bsize,
+                                              int mi_col, BLOCK_SIZE bsize,
                                               int gf_temporal_ref,
                                               int use_ref_frame[],
                                               int *force_skip_low_temp_var) {
@@ -1762,7 +1762,7 @@ static AOM_INLINE void get_ref_frame_use_mask(AV1_COMP *cpi, MACROBLOCK *x,
       x->nonrd_prune_ref_frame_search > 2 &&
       x->color_sensitivity_sb_g[COLOR_SENS_IDX(AOM_PLANE_U)] == 0 &&
       x->color_sensitivity_sb_g[COLOR_SENS_IDX(AOM_PLANE_V)] == 0) {
-    int thr = (cm->width * cm->height >= 640 * 360) ? 100 : 150;
+    int thr = (cm->width * cm->height > RESOLUTION_288P) ? 100 : 150;
     int pred = x->pred_mv_sad[LAST_FRAME] >>
                (b_width_log2_lookup[bsize] + b_height_log2_lookup[bsize]);
     if (pred > thr) use_golden_ref_frame = 1;
@@ -1933,11 +1933,16 @@ static void set_color_sensitivity(AV1_COMP *cpi, MACROBLOCK *x,
     return;
   }
   int shift = 3;
+  unsigned int source_var_thr = 50;
+  int uv_sad_thr = 100;
   if (source_sad_nonrd >= kMedSad && x->source_variance > 0 && high_res)
     shift = 4;
-  if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN &&
-      cpi->rc.high_source_sad) {
-    shift = 6;
+  if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN) {
+    if (cpi->rc.high_source_sad) shift = 6;
+    if (source_sad_nonrd > kMedSad) {
+      source_var_thr = 1200;
+      uv_sad_thr = 10;
+    }
   }
   NOISE_LEVEL noise_level = kLow;
   int norm_sad =
@@ -1975,7 +1980,7 @@ static void set_color_sensitivity(AV1_COMP *cpi, MACROBLOCK *x,
           uv_sad >> (b_width_log2_lookup[bs] + b_height_log2_lookup[bs]);
       x->color_sensitivity[COLOR_SENS_IDX(plane)] =
           uv_sad > (y_sad >> shift) && norm_uv_sad > 40;
-      if (source_variance < 50 && norm_uv_sad > 100)
+      if (source_variance < source_var_thr && norm_uv_sad > uv_sad_thr)
         x->color_sensitivity[COLOR_SENS_IDX(plane)] = 1;
     }
   }

@@ -24,9 +24,9 @@
 namespace {
 
 #if CONFIG_REALTIME_ONLY
-const int kUsage = AOM_USAGE_REALTIME;
+const unsigned int kUsage = AOM_USAGE_REALTIME;
 #else
-const int kUsage = AOM_USAGE_GOOD_QUALITY;
+const unsigned int kUsage = AOM_USAGE_GOOD_QUALITY;
 #endif
 
 static void *Memset16(void *dest, int val, size_t length) {
@@ -66,6 +66,22 @@ TEST(EncodeAPI, InvalidParams) {
   EXPECT_EQ(AOM_CODEC_INVALID_PARAM,
             aom_codec_enc_config_default(iface, &cfg, 3));
   EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_config_default(iface, &cfg, kUsage));
+  cfg.g_w = 1 << 16;
+  cfg.g_h = (1 << 14) + 1;
+  EXPECT_EQ(AOM_CODEC_INVALID_PARAM, aom_codec_enc_init(&enc, iface, &cfg, 0));
+  EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_config_default(iface, &cfg, kUsage));
+  cfg.g_w = (1 << 14) + 1;
+  cfg.g_h = 1 << 16;
+  EXPECT_EQ(AOM_CODEC_INVALID_PARAM, aom_codec_enc_init(&enc, iface, &cfg, 0));
+  EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_config_default(iface, &cfg, kUsage));
+  cfg.g_forced_max_frame_width = 1 << 16;
+  cfg.g_forced_max_frame_height = (1 << 14) + 1;
+  EXPECT_EQ(AOM_CODEC_INVALID_PARAM, aom_codec_enc_init(&enc, iface, &cfg, 0));
+  EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_config_default(iface, &cfg, kUsage));
+  cfg.g_forced_max_frame_width = (1 << 14) + 1;
+  cfg.g_forced_max_frame_height = 1 << 16;
+  EXPECT_EQ(AOM_CODEC_INVALID_PARAM, aom_codec_enc_init(&enc, iface, &cfg, 0));
+  EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_config_default(iface, &cfg, kUsage));
   EXPECT_EQ(AOM_CODEC_OK, aom_codec_enc_init(&enc, iface, &cfg, 0));
   EXPECT_EQ(nullptr, aom_codec_get_global_headers(nullptr));
 
@@ -90,13 +106,12 @@ TEST(EncodeAPI, InvalidControlId) {
   EXPECT_EQ(AOM_CODEC_OK, aom_codec_destroy(&enc));
 }
 
-TEST(EncodeAPI, SetSFrameOnFirstFrame) {
+void EncodeSetSFrameOnFirstFrame(aom_img_fmt fmt, aom_codec_flags_t flag) {
   constexpr int kWidth = 2;
   constexpr int kHeight = 128;
   unsigned char kBuffer[kWidth * kHeight * 3] = { 0 };
   aom_image_t img;
-  ASSERT_EQ(aom_img_wrap(&img, AOM_IMG_FMT_I420, kWidth, kHeight, 1, kBuffer),
-            &img);
+  ASSERT_EQ(aom_img_wrap(&img, fmt, kWidth, kHeight, 1, kBuffer), &img);
 
   aom_codec_iface_t *iface = aom_codec_av1_cx();
   aom_codec_enc_cfg_t cfg;
@@ -105,7 +120,7 @@ TEST(EncodeAPI, SetSFrameOnFirstFrame) {
   cfg.g_h = kHeight;
 
   aom_codec_ctx_t enc;
-  ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, 0), AOM_CODEC_OK);
+  ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, flag), AOM_CODEC_OK);
   // One of these aom_codec_encode() calls should fail.
   if (aom_codec_encode(&enc, &img, 0, 1, AOM_EFLAG_SET_S_FRAME) ==
       AOM_CODEC_OK) {
@@ -113,6 +128,16 @@ TEST(EncodeAPI, SetSFrameOnFirstFrame) {
   }
   EXPECT_EQ(aom_codec_destroy(&enc), AOM_CODEC_OK);
 }
+
+TEST(EncodeAPI, SetSFrameOnFirstFrame) {
+  EncodeSetSFrameOnFirstFrame(AOM_IMG_FMT_I420, 0);
+}
+
+#if CONFIG_AV1_HIGHBITDEPTH
+TEST(EncodeAPI, SetSFrameOnFirstFrameHighbd) {
+  EncodeSetSFrameOnFirstFrame(AOM_IMG_FMT_I42016, AOM_CODEC_USE_HIGHBITDEPTH);
+}
+#endif  // CONFIG_AV1_HIGHBITDEPTH
 
 TEST(EncodeAPI, MonochromeInProfiles) {
   aom_codec_iface_t *iface = aom_codec_av1_cx();
@@ -147,7 +172,7 @@ TEST(EncodeAPI, LowBDEncoderLowBDImage) {
   ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, 0), AOM_CODEC_OK);
 
   aom_image_t *image =
-      aom_img_alloc(NULL, AOM_IMG_FMT_I420, cfg.g_w, cfg.g_h, 0);
+      aom_img_alloc(nullptr, AOM_IMG_FMT_I420, cfg.g_w, cfg.g_h, 0);
   ASSERT_NE(image, nullptr);
 
   // Set the image to two colors so that av1_set_screen_content_options() will
@@ -184,7 +209,7 @@ TEST(EncodeAPI, HighBDEncoderHighBDImage) {
   ASSERT_EQ(init_status, AOM_CODEC_OK);
 
   aom_image_t *image =
-      aom_img_alloc(NULL, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
+      aom_img_alloc(nullptr, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
   ASSERT_NE(image, nullptr);
 
   // Set the image to two colors so that av1_set_screen_content_options() will
@@ -222,7 +247,7 @@ TEST(EncodeAPI, HighBDEncoderLowBDImage) {
   ASSERT_EQ(init_status, AOM_CODEC_OK);
 
   aom_image_t *image =
-      aom_img_alloc(NULL, AOM_IMG_FMT_I420, cfg.g_w, cfg.g_h, 0);
+      aom_img_alloc(nullptr, AOM_IMG_FMT_I420, cfg.g_w, cfg.g_h, 0);
   ASSERT_NE(image, nullptr);
 
   // Set the image to two colors so that av1_set_screen_content_options() will
@@ -255,7 +280,7 @@ TEST(EncodeAPI, LowBDEncoderHighBDImage) {
   ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, 0), AOM_CODEC_OK);
 
   aom_image_t *image =
-      aom_img_alloc(NULL, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
+      aom_img_alloc(nullptr, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
   ASSERT_NE(image, nullptr);
 
   // Set the image to two colors so that av1_set_screen_content_options() will
@@ -279,13 +304,13 @@ TEST(EncodeAPI, LowBDEncoderHighBDImage) {
 }
 
 class EncodeAPIParameterized
-    : public testing::TestWithParam<
-          std::tuple</*usage=*/int, /*speed=*/int, /*aq_mode=*/int>> {};
+    : public testing::TestWithParam<std::tuple<
+          /*usage=*/unsigned int, /*speed=*/int, /*aq_mode=*/unsigned int>> {};
 
 // Encodes two frames at a given usage, speed, and aq_mode setting.
 // Reproduces b/303023614
 TEST_P(EncodeAPIParameterized, HighBDEncoderHighBDFrames) {
-  const int usage = std::get<0>(GetParam());
+  const unsigned int usage = std::get<0>(GetParam());
   int speed = std::get<1>(GetParam());
 
   if (speed == 10 && usage != AOM_USAGE_REALTIME) {
@@ -304,15 +329,15 @@ TEST_P(EncodeAPIParameterized, HighBDEncoderHighBDFrames) {
 #if !CONFIG_AV1_HIGHBITDEPTH
   ASSERT_EQ(init_status, AOM_CODEC_INCAPABLE);
 #else
-  const int aq_mode = std::get<2>(GetParam());
-
   ASSERT_EQ(init_status, AOM_CODEC_OK);
+
+  const unsigned int aq_mode = std::get<2>(GetParam());
 
   ASSERT_EQ(aom_codec_control(&enc, AOME_SET_CPUUSED, speed), AOM_CODEC_OK);
   ASSERT_EQ(aom_codec_control(&enc, AV1E_SET_AQ_MODE, aq_mode), AOM_CODEC_OK);
 
   aom_image_t *image =
-      aom_img_alloc(NULL, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
+      aom_img_alloc(nullptr, AOM_IMG_FMT_I42016, cfg.g_w, cfg.g_h, 0);
   ASSERT_NE(image, nullptr);
 
   for (unsigned int i = 0; i < image->d_h; ++i) {
@@ -338,15 +363,17 @@ TEST_P(EncodeAPIParameterized, HighBDEncoderHighBDFrames) {
 #endif
 }
 
+const unsigned int kUsages[] = {
+  AOM_USAGE_REALTIME,
+#if !CONFIG_REALTIME_ONLY
+  AOM_USAGE_GOOD_QUALITY,
+  AOM_USAGE_ALL_INTRA,
+#endif
+};
+
 INSTANTIATE_TEST_SUITE_P(All, EncodeAPIParameterized,
                          testing::Combine(
-#if CONFIG_REALTIME_ONLY
-                             /*usage=*/testing::Values(AOM_USAGE_REALTIME),
-#else
-                             /*usage=*/testing::Values(AOM_USAGE_GOOD_QUALITY,
-                                                       AOM_USAGE_REALTIME,
-                                                       AOM_USAGE_ALL_INTRA),
-#endif
+                             /*usage=*/testing::ValuesIn(kUsages),
                              /*speed=*/testing::Values(6, 7, 10),
                              /*aq_mode=*/testing::Values(0, 1, 2, 3)));
 

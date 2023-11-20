@@ -70,7 +70,7 @@ void av1_init_layer_context(AV1_COMP *const cpi) {
         lc->actual_num_seg1_blocks = 0;
         lc->actual_num_seg2_blocks = 0;
         lc->counter_encode_maxq_scene_change = 0;
-        if (lc->map) aom_free(lc->map);
+        aom_free(lc->map);
         CHECK_MEM_ERROR(cm, lc->map,
                         aom_calloc(mi_rows * mi_cols, sizeof(*lc->map)));
       }
@@ -156,7 +156,7 @@ void av1_update_layer_context_change_config(AV1_COMP *const cpi,
         lc->actual_num_seg1_blocks = 0;
         lc->actual_num_seg2_blocks = 0;
         lc->counter_encode_maxq_scene_change = 0;
-        if (lc->map) aom_free(lc->map);
+        aom_free(lc->map);
         CHECK_MEM_ERROR(cm, lc->map,
                         aom_calloc(mi_rows * mi_cols, sizeof(*lc->map)));
       }
@@ -216,6 +216,7 @@ void av1_restore_layer_context(AV1_COMP *const cpi) {
   LAYER_CONTEXT *const lc = get_layer_context(cpi);
   const int old_frame_since_key = cpi->rc.frames_since_key;
   const int old_frame_to_key = cpi->rc.frames_to_key;
+  const int max_consec_drop = cpi->rc.max_consec_drop;
   // Restore layer rate control.
   cpi->rc = lc->rc;
   cpi->ppi->p_rc = lc->p_rc;
@@ -228,6 +229,8 @@ void av1_restore_layer_context(AV1_COMP *const cpi) {
   // before the layer restore. Keep these defined for the stream (not layer).
   cpi->rc.frames_since_key = old_frame_since_key;
   cpi->rc.frames_to_key = old_frame_to_key;
+  // Reset to value before the layer restore.
+  cpi->rc.max_consec_drop = max_consec_drop;
   // For spatial-svc, allow cyclic-refresh to be applied on the spatial layers,
   // for the base temporal layer.
   if (cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ &&
@@ -359,7 +362,8 @@ void av1_free_svc_cyclic_refresh(AV1_COMP *const cpi) {
     for (int tl = 0; tl < svc->number_temporal_layers; ++tl) {
       int layer = LAYER_IDS_TO_IDX(sl, tl, svc->number_temporal_layers);
       LAYER_CONTEXT *const lc = &svc->layer_context[layer];
-      if (lc->map) aom_free(lc->map);
+      aom_free(lc->map);
+      lc->map = NULL;
     }
   }
 }
