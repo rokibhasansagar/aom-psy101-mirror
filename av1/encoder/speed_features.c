@@ -1146,6 +1146,7 @@ static void set_good_speed_features_framesize_independent(
     sf->tpl_sf.prune_intra_modes = 1;
     sf->tpl_sf.reduce_first_step_size = 6;
     sf->tpl_sf.subpel_force_stop = QUARTER_PEL;
+    sf->tpl_sf.search_method = FAST_BIGDIA;
     sf->tpl_sf.gop_length_decision_method = 1;
 
     sf->tx_sf.adaptive_txb_search_level = boosted ? 2 : 3;
@@ -1212,7 +1213,6 @@ static void set_good_speed_features_framesize_independent(
     sf->mv_sf.prune_mesh_search = PRUNE_MESH_SEARCH_LVL_2;
 
     sf->tpl_sf.subpel_force_stop = HALF_PEL;
-    sf->tpl_sf.search_method = FAST_BIGDIA;
     sf->tpl_sf.use_sad_for_mode_decision = 1;
 
     sf->tx_sf.tx_type_search.fast_intra_tx_type_search = 1;
