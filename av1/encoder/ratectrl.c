@@ -187,7 +187,8 @@ int av1_rc_bits_per_mb(const AV1_COMP *cpi, FRAME_TYPE frame_type, int qindex,
   assert(correction_factor <= MAX_BPB_FACTOR &&
          correction_factor >= MIN_BPB_FACTOR);
 
-  if (frame_type != KEY_FRAME && accurate_estimate) {
+  if (cpi->oxcf.rc_cfg.mode == AOM_CBR && frame_type != KEY_FRAME &&
+      accurate_estimate) {
     assert(cpi->rec_sse != UINT64_MAX);
     const int mbs = cm->mi_params.MBs;
     const double sse_sqrt =
@@ -2247,7 +2248,8 @@ void av1_rc_postencode_update(AV1_COMP *cpi, uint64_t bytes_used) {
   av1_rc_update_rate_correction_factors(cpi, 0, cm->width, cm->height);
 
   // Update bit estimation ratio.
-  if (cm->current_frame.frame_type != KEY_FRAME &&
+  if (cpi->oxcf.rc_cfg.mode == AOM_CBR &&
+      cm->current_frame.frame_type != KEY_FRAME &&
       cpi->sf.hl_sf.accurate_bit_estimate) {
     const double q = av1_convert_qindex_to_q(cm->quant_params.base_qindex,
                                              cm->seq_params->bit_depth);
@@ -3373,6 +3375,7 @@ void av1_get_one_pass_rt_params(AV1_COMP *cpi, FRAME_TYPE *const frame_type,
       svc->layer_context[layer].is_key_frame = 1;
     }
     rc->frame_number_encoded = 0;
+    cpi->ppi->rtc_ref.non_reference_frame = 0;
   } else {
     *frame_type = INTER_FRAME;
     gf_group->update_type[cpi->gf_frame_index] = LF_UPDATE;
