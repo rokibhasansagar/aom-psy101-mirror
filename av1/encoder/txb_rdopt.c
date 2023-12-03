@@ -335,7 +335,10 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   const LV_MAP_EOB_COST *txb_eob_costs =
       &coeff_costs->eob_costs[eob_multi_size][plane_type];
 
-  const int rshift = 2;
+  int rshift = 2;
+  if (sharpness > 0) {
+    rshift = 1 + sharpness;
+  }
 
   const int64_t rdmult =
       (((int64_t)x->rdmult *
