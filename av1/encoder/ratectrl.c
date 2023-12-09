@@ -188,8 +188,7 @@ int av1_rc_bits_per_mb(const AV1_COMP *cpi, FRAME_TYPE frame_type, int qindex,
          correction_factor >= MIN_BPB_FACTOR);
 
   if (cpi->oxcf.rc_cfg.mode == AOM_CBR && frame_type != KEY_FRAME &&
-      accurate_estimate) {
-    assert(cpi->rec_sse != UINT64_MAX);
+      accurate_estimate && cpi->rec_sse != UINT64_MAX) {
     const int mbs = cm->mi_params.MBs;
     const double sse_sqrt =
         (double)((int)sqrt((double)(cpi->rec_sse)) << BPER_MB_NORMBITS) /
@@ -2086,6 +2085,13 @@ static void rc_compute_variance_onepass_rt(AV1_COMP *cpi) {
   // TODO(yunqing): support scaled reference frames.
   if (cpi->scaled_ref_buf[LAST_FRAME - 1]) return;
 
+  for (int i = 0; i < 2; ++i) {
+    if (unscaled_src->widths[i] != yv12->widths[i] ||
+        unscaled_src->heights[i] != yv12->heights[i]) {
+      return;
+    }
+  }
+
   const int num_mi_cols = cm->mi_params.mi_cols;
   const int num_mi_rows = cm->mi_params.mi_rows;
   const BLOCK_SIZE bsize = BLOCK_64X64;
@@ -2897,10 +2903,12 @@ void av1_set_rtc_reference_structure_one_layer(AV1_COMP *cpi, int gf_update) {
   for (int i = 0; i < REF_FRAMES; ++i) rtc_ref->refresh[i] = 0;
   // Set the reference frame flags.
   ext_flags->ref_frame_flags ^= AOM_LAST_FLAG;
-  ext_flags->ref_frame_flags ^= AOM_ALT_FLAG;
-  ext_flags->ref_frame_flags ^= AOM_GOLD_FLAG;
-  if (cpi->sf.rt_sf.ref_frame_comp_nonrd[1])
-    ext_flags->ref_frame_flags ^= AOM_LAST2_FLAG;
+  if (!cpi->sf.rt_sf.force_only_last_ref) {
+    ext_flags->ref_frame_flags ^= AOM_ALT_FLAG;
+    ext_flags->ref_frame_flags ^= AOM_GOLD_FLAG;
+    if (cpi->sf.rt_sf.ref_frame_comp_nonrd[1])
+      ext_flags->ref_frame_flags ^= AOM_LAST2_FLAG;
+  }
   const int sh = 6;
   // Moving index slot for last: 0 - (sh - 1).
   if (frame_number > 1) last_idx = ((frame_number - 1) % sh);

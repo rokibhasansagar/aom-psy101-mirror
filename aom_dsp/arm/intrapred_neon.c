@@ -1826,30 +1826,9 @@ static void dr_prediction_z2_Nx8_neon(int N, uint8_t *dst, ptrdiff_t stride,
       uint8x8_t a0_x1 = vget_low_u8(a01_x);
       uint8x8_t a1_x1 = vget_high_u8(a01_x);
 #else   // !AOM_ARCH_AARCH64
-      DECLARE_ALIGNED(32, int16_t, base_y_c[16]);
-
-      vst1q_s16(base_y_c, base_y_c128);
-      uint8x8_t a0_x1 = vdup_n_u8(0);
-      a0_x1 = vld1_lane_u8(left + base_y_c[0], a0_x1, 0);
-      a0_x1 = vld1_lane_u8(left + base_y_c[1], a0_x1, 1);
-      a0_x1 = vld1_lane_u8(left + base_y_c[2], a0_x1, 2);
-      a0_x1 = vld1_lane_u8(left + base_y_c[3], a0_x1, 3);
-      a0_x1 = vld1_lane_u8(left + base_y_c[4], a0_x1, 4);
-      a0_x1 = vld1_lane_u8(left + base_y_c[5], a0_x1, 5);
-      a0_x1 = vld1_lane_u8(left + base_y_c[6], a0_x1, 6);
-      a0_x1 = vld1_lane_u8(left + base_y_c[7], a0_x1, 7);
-
+      uint8x8_t a0_x1 = load_u8_gather_s16_x8(left, base_y_c128);
       base_y_c128 = vaddq_s16(base_y_c128, vdupq_n_s16(1));
-      vst1q_s16(base_y_c, base_y_c128);
-      uint8x8_t a1_x1 = vdup_n_u8(0);
-      a1_x1 = vld1_lane_u8(left + base_y_c[0], a1_x1, 0);
-      a1_x1 = vld1_lane_u8(left + base_y_c[1], a1_x1, 1);
-      a1_x1 = vld1_lane_u8(left + base_y_c[2], a1_x1, 2);
-      a1_x1 = vld1_lane_u8(left + base_y_c[3], a1_x1, 3);
-      a1_x1 = vld1_lane_u8(left + base_y_c[4], a1_x1, 4);
-      a1_x1 = vld1_lane_u8(left + base_y_c[5], a1_x1, 5);
-      a1_x1 = vld1_lane_u8(left + base_y_c[6], a1_x1, 6);
-      a1_x1 = vld1_lane_u8(left + base_y_c[7], a1_x1, 7);
+      uint8x8_t a1_x1 = load_u8_gather_s16_x8(left, base_y_c128);
 #endif  // AOM_ARCH_AARCH64
 
       if (upsample_left) {
@@ -2075,54 +2054,16 @@ static void dr_prediction_z2_HxW_neon(int H, int W, uint8_t *dst,
           a1_y0 = vget_low_u8(a1_y01);
           a1_y1 = vget_high_u8(a1_y01);
 #else   // !AOM_ARCH_AARCH64
-          DECLARE_ALIGNED(32, int16_t, base_y_c[16]);
-
-          vst1q_s16(base_y_c, base_y_c256.val[0]);
-          vst1q_s16(base_y_c + 8, base_y_c256.val[1]);
-          a0_y0 = vdup_n_u8(0);
-          a0_y0 = vld1_lane_u8(left + base_y_c[0], a0_y0, 0);
-          a0_y0 = vld1_lane_u8(left + base_y_c[1], a0_y0, 1);
-          a0_y0 = vld1_lane_u8(left + base_y_c[2], a0_y0, 2);
-          a0_y0 = vld1_lane_u8(left + base_y_c[3], a0_y0, 3);
-          a0_y0 = vld1_lane_u8(left + base_y_c[4], a0_y0, 4);
-          a0_y0 = vld1_lane_u8(left + base_y_c[5], a0_y0, 5);
-          a0_y0 = vld1_lane_u8(left + base_y_c[6], a0_y0, 6);
-          a0_y0 = vld1_lane_u8(left + base_y_c[7], a0_y0, 7);
-          a0_y1 = vdup_n_u8(0);
-          a0_y1 = vld1_lane_u8(left + base_y_c[8], a0_y1, 0);
-          a0_y1 = vld1_lane_u8(left + base_y_c[9], a0_y1, 1);
-          a0_y1 = vld1_lane_u8(left + base_y_c[10], a0_y1, 2);
-          a0_y1 = vld1_lane_u8(left + base_y_c[11], a0_y1, 3);
-          a0_y1 = vld1_lane_u8(left + base_y_c[12], a0_y1, 4);
-          a0_y1 = vld1_lane_u8(left + base_y_c[13], a0_y1, 5);
-          a0_y1 = vld1_lane_u8(left + base_y_c[14], a0_y1, 6);
-          a0_y1 = vld1_lane_u8(left + base_y_c[15], a0_y1, 7);
+          a0_y0 = load_u8_gather_s16_x8(left, base_y_c256.val[0]);
+          a0_y1 = load_u8_gather_s16_x8(left, base_y_c256.val[1]);
 
           base_y_c256.val[0] =
               vaddq_s16(base_y_c256.val[0], vreinterpretq_s16_u16(c1));
           base_y_c256.val[1] =
               vaddq_s16(base_y_c256.val[1], vreinterpretq_s16_u16(c1));
 
-          vst1q_s16(base_y_c, base_y_c256.val[0]);
-          vst1q_s16(base_y_c + 8, base_y_c256.val[1]);
-          a1_y0 = vdup_n_u8(0);
-          a1_y0 = vld1_lane_u8(left + base_y_c[0], a1_y0, 0);
-          a1_y0 = vld1_lane_u8(left + base_y_c[1], a1_y0, 1);
-          a1_y0 = vld1_lane_u8(left + base_y_c[2], a1_y0, 2);
-          a1_y0 = vld1_lane_u8(left + base_y_c[3], a1_y0, 3);
-          a1_y0 = vld1_lane_u8(left + base_y_c[4], a1_y0, 4);
-          a1_y0 = vld1_lane_u8(left + base_y_c[5], a1_y0, 5);
-          a1_y0 = vld1_lane_u8(left + base_y_c[6], a1_y0, 6);
-          a1_y0 = vld1_lane_u8(left + base_y_c[7], a1_y0, 7);
-          a1_y1 = vdup_n_u8(0);
-          a1_y1 = vld1_lane_u8(left + base_y_c[8], a1_y1, 0);
-          a1_y1 = vld1_lane_u8(left + base_y_c[9], a1_y1, 1);
-          a1_y1 = vld1_lane_u8(left + base_y_c[10], a1_y1, 2);
-          a1_y1 = vld1_lane_u8(left + base_y_c[11], a1_y1, 3);
-          a1_y1 = vld1_lane_u8(left + base_y_c[12], a1_y1, 4);
-          a1_y1 = vld1_lane_u8(left + base_y_c[13], a1_y1, 5);
-          a1_y1 = vld1_lane_u8(left + base_y_c[14], a1_y1, 6);
-          a1_y1 = vld1_lane_u8(left + base_y_c[15], a1_y1, 7);
+          a1_y0 = load_u8_gather_s16_x8(left, base_y_c256.val[0]);
+          a1_y1 = load_u8_gather_s16_x8(left, base_y_c256.val[1]);
 #endif  // AOM_ARCH_AARCH64
         }
 
@@ -2800,14 +2741,10 @@ static void dr_prediction_z3_4x4_neon(uint8_t *dst, ptrdiff_t stride,
 
   dr_prediction_z1_HxW_internal_neon_64(4, 4, dstvec, left, upsample_left, dy);
   transpose4x8_8x4_low_neon(dstvec, &dest);
-  vst1_lane_u32((uint32_t *)(dst + stride * 0),
-                vreinterpret_u32_u16(dest.val[0]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 1),
-                vreinterpret_u32_u16(dest.val[0]), 1);
-  vst1_lane_u32((uint32_t *)(dst + stride * 2),
-                vreinterpret_u32_u16(dest.val[1]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 3),
-                vreinterpret_u32_u16(dest.val[1]), 1);
+  store_u8x4_strided_x2(dst + stride * 0, stride,
+                        vreinterpret_u8_u16(dest.val[0]));
+  store_u8x4_strided_x2(dst + stride * 2, stride,
+                        vreinterpret_u8_u16(dest.val[1]));
 }
 
 static void dr_prediction_z3_8x8_neon(uint8_t *dst, ptrdiff_t stride,
@@ -2836,22 +2773,14 @@ static void dr_prediction_z3_4x8_neon(uint8_t *dst, ptrdiff_t stride,
 
   dr_prediction_z1_HxW_internal_neon_64(8, 4, dstvec, left, upsample_left, dy);
   transpose4x8_8x4_neon(dstvec, d);
-  vst1_lane_u32((uint32_t *)(dst + stride * 0),
-                vreinterpret_u32_u16(d[0].val[0]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 1),
-                vreinterpret_u32_u16(d[0].val[0]), 1);
-  vst1_lane_u32((uint32_t *)(dst + stride * 2),
-                vreinterpret_u32_u16(d[0].val[1]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 3),
-                vreinterpret_u32_u16(d[0].val[1]), 1);
-  vst1_lane_u32((uint32_t *)(dst + stride * 4),
-                vreinterpret_u32_u16(d[1].val[0]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 5),
-                vreinterpret_u32_u16(d[1].val[0]), 1);
-  vst1_lane_u32((uint32_t *)(dst + stride * 6),
-                vreinterpret_u32_u16(d[1].val[1]), 0);
-  vst1_lane_u32((uint32_t *)(dst + stride * 7),
-                vreinterpret_u32_u16(d[1].val[1]), 1);
+  store_u8x4_strided_x2(dst + stride * 0, stride,
+                        vreinterpret_u8_u16(d[0].val[0]));
+  store_u8x4_strided_x2(dst + stride * 2, stride,
+                        vreinterpret_u8_u16(d[0].val[1]));
+  store_u8x4_strided_x2(dst + stride * 4, stride,
+                        vreinterpret_u8_u16(d[1].val[0]));
+  store_u8x4_strided_x2(dst + stride * 6, stride,
+                        vreinterpret_u8_u16(d[1].val[1]));
 }
 
 static void dr_prediction_z3_8x4_neon(uint8_t *dst, ptrdiff_t stride,
@@ -2903,41 +2832,14 @@ static void dr_prediction_z3_4x16_neon(uint8_t *dst, ptrdiff_t stride,
 
   dr_prediction_z1_HxW_internal_neon(16, 4, dstvec, left, upsample_left, dy);
   transpose4x16_neon(dstvec, d);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 0),
-                 vreinterpretq_u32_u16(d[0].val[0]), 0);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 1),
-                 vreinterpretq_u32_u16(d[0].val[0]), 1);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 2),
-                 vreinterpretq_u32_u16(d[0].val[0]), 2);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 3),
-                 vreinterpretq_u32_u16(d[0].val[0]), 3);
-
-  vst1q_lane_u32((uint32_t *)(dst + stride * 4),
-                 vreinterpretq_u32_u16(d[0].val[1]), 0);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 5),
-                 vreinterpretq_u32_u16(d[0].val[1]), 1);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 6),
-                 vreinterpretq_u32_u16(d[0].val[1]), 2);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 7),
-                 vreinterpretq_u32_u16(d[0].val[1]), 3);
-
-  vst1q_lane_u32((uint32_t *)(dst + stride * 8),
-                 vreinterpretq_u32_u16(d[1].val[0]), 0);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 9),
-                 vreinterpretq_u32_u16(d[1].val[0]), 1);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 10),
-                 vreinterpretq_u32_u16(d[1].val[0]), 2);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 11),
-                 vreinterpretq_u32_u16(d[1].val[0]), 3);
-
-  vst1q_lane_u32((uint32_t *)(dst + stride * 12),
-                 vreinterpretq_u32_u16(d[1].val[1]), 0);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 13),
-                 vreinterpretq_u32_u16(d[1].val[1]), 1);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 14),
-                 vreinterpretq_u32_u16(d[1].val[1]), 2);
-  vst1q_lane_u32((uint32_t *)(dst + stride * 15),
-                 vreinterpretq_u32_u16(d[1].val[1]), 3);
+  store_u8x4_strided_x4(dst + stride * 0, stride,
+                        vreinterpretq_u8_u16(d[0].val[0]));
+  store_u8x4_strided_x4(dst + stride * 4, stride,
+                        vreinterpretq_u8_u16(d[0].val[1]));
+  store_u8x4_strided_x4(dst + stride * 8, stride,
+                        vreinterpretq_u8_u16(d[1].val[0]));
+  store_u8x4_strided_x4(dst + stride * 12, stride,
+                        vreinterpretq_u8_u16(d[1].val[1]));
 }
 
 static void dr_prediction_z3_16x4_neon(uint8_t *dst, ptrdiff_t stride,
@@ -3790,7 +3692,7 @@ static INLINE void paeth_4or8_x_h_neon(uint8_t *dest, ptrdiff_t stride,
     result = vbsl_u8(left_or_top_mask, result, top_left);
 
     if (width == 4) {
-      store_unaligned_u8_4x1(dest, result, 0);
+      store_u8_4x1(dest, result, 0);
     } else {  // width == 8
       vst1_u8(dest, result);
     }
