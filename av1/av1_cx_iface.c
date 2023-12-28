@@ -72,7 +72,7 @@ struct av1_extracfg {
   unsigned int force_video_mode;
   unsigned int enable_obmc;
   unsigned int disable_trellis_quant;
-  unsigned int enable_qm;
+  int enable_qm;
   unsigned int qm_y;
   unsigned int qm_u;
   unsigned int qm_v;
