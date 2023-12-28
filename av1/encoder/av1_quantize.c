@@ -861,47 +861,45 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
                        int q, int enable_chroma_deltaq, int enable_hdr_deltaq) {
   // quantizer has to be reinitialized with av1_init_quantizer() if any
   // delta_q changes.
-  const AV1_COMMON *const cm = &cpi->common;
+  AV1_COMMON *const cm = &cpi->common;
   CommonQuantParams *quant_params = &cm->quant_params;
   quant_params->base_qindex = AOMMAX(cm->delta_q_info.delta_q_present_flag, q);
   quant_params->y_dc_delta_q = 0;
 
+  int dqpCb = 0;
+  int dqpCr = 0;
+
   // following section 8.3.2 in T-REC-H.Sup15 document
   // to apply to AV1 qindex in the range of [0, 255]
   if (enable_hdr_deltaq) {
-    int dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
-    int dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
-    quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
-    quant_params->v_dc_delta_q = quant_params->v_ac_delta_q = dqpCr;
+    dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
+    dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
     if (dqpCb != dqpCr) {
       cm->seq_params->separate_uv_delta_q = 1;
     }
   }
 
   // TODO(aomedia:2717): need to design better delta
-  int chroma_q_offset = 0;
   if (enable_chroma_deltaq && !is_lossless_requested(&cpi->oxcf.rc_cfg)) {
     // If chroma-deltaq is enabled, we apply these chroma q offsets:
     // 420: 0, 422: +2, 444: +4
-    int subsampling = cpi->source->subsampling_x + cpi->source->subsampling_y;
-    switch (subsampling)
-    {
-    case 0:
-      chroma_q_offset = +4;
-      break;
-    case 1:
-      chroma_q_offset = +2;
-      break;
-    default:
-      chroma_q_offset = 0;
-      break;
+    switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
+      case 0:
+        dqpCb += 4;
+        dqpCr += 4;
+        break;
+      case 1:
+        dqpCb += 2;
+        dqpCr += 2;
+        break;
+      default:
+        dqpCb += 0;
+        dqpCr += 0;
     }
   }
-  
-  quant_params->u_dc_delta_q = chroma_q_offset;
-  quant_params->u_ac_delta_q = chroma_q_offset;
-  quant_params->v_dc_delta_q = chroma_q_offset;
-  quant_params->v_ac_delta_q = chroma_q_offset;
+
+  quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
+  quant_params->v_dc_delta_q = quant_params->v_ac_delta_q = dqpCr;
 
   quant_params->qmatrix_level_y =
       aom_get_qmlevel(quant_params->base_qindex, min_qmlevel, max_qmlevel);
