@@ -42,7 +42,6 @@ struct av1_extracfg {
   unsigned int enable_auto_bwd_ref;
   unsigned int noise_sensitivity;
   unsigned int sharpness;
-  int quant_sharpness;
   unsigned int static_thresh;
   unsigned int row_mt;
   unsigned int fp_mt;
@@ -227,7 +226,6 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // enable_auto_bwd_ref
   0,              // noise_sensitivity
   0,              // sharpness
-  0,              // quant_sharpness
   0,              // static_thresh
   1,              // row_mt
   0,              // fp_mt
@@ -383,7 +381,6 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // enable_auto_bwd_ref
   0,              // noise_sensitivity
   0,              // sharpness
-  0,              // quant_sharpness
   0,              // static_thresh
   1,              // row_mt
   0,              // fp_mt
@@ -761,7 +758,6 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
         "coding.");
 
   RANGE_CHECK_HI(extra_cfg, sharpness, 7);
-  RANGE_CHECK(extra_cfg, quant_sharpness, -7, 7);
   RANGE_CHECK_HI(extra_cfg, arnr_max_frames, 15);
   RANGE_CHECK_HI(extra_cfg, arnr_strength, 4);
   RANGE_CHECK_HI(extra_cfg, cq_level, 63);
@@ -1275,7 +1271,6 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   } else {
     algo_cfg->sharpness = extra_cfg->sharpness;
   }
-  algo_cfg->quant_sharpness = extra_cfg->quant_sharpness;
   algo_cfg->arnr_max_frames = extra_cfg->arnr_max_frames;
   algo_cfg->arnr_strength = extra_cfg->arnr_strength;
   algo_cfg->cdf_update_mode = (uint8_t)extra_cfg->cdf_update_mode;
@@ -1718,13 +1713,6 @@ static aom_codec_err_t ctrl_set_sharpness(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   extra_cfg.sharpness = CAST(AOME_SET_SHARPNESS, args);
-  return update_extra_cfg(ctx, &extra_cfg);
-}
-
-static aom_codec_err_t ctrl_set_quant_sharpness(aom_codec_alg_priv_t *ctx,
-                                          va_list args) {
-  struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.quant_sharpness = CAST(AOME_SET_QUANT_SHARPNESS, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -3863,9 +3851,6 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.sharpness, argv,
                               err_string)) {
     extra_cfg.sharpness = arg_parse_uint_helper(&arg, err_string);
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.quant_sharpness, argv,
-                              err_string)) {
-    extra_cfg.quant_sharpness = arg_parse_uint_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.static_thresh, argv,
                               err_string)) {
     extra_cfg.static_thresh = arg_parse_uint_helper(&arg, err_string);
@@ -4374,7 +4359,6 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AOME_SET_ENABLEAUTOALTREF, ctrl_set_enable_auto_alt_ref },
   { AOME_SET_ENABLEAUTOBWDREF, ctrl_set_enable_auto_bwd_ref },
   { AOME_SET_SHARPNESS, ctrl_set_sharpness },
-  { AOME_SET_QUANT_SHARPNESS, ctrl_set_quant_sharpness },
   { AOME_SET_STATIC_THRESHOLD, ctrl_set_static_thresh },
   { AV1E_SET_ROW_MT, ctrl_set_row_mt },
   { AV1E_SET_FP_MT, ctrl_set_fp_mt },

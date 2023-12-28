@@ -1535,25 +1535,17 @@ enum aome_enc_control_id {
    */
   AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR = 164,
 
-  /*!\brief Codec control function to set the quantization sharpness parameter,
-   * unsigned int parameter.
-   *
-   * Valid range: -7..7. The default is 0. 
-   * Values 1-7 will change quantization in favour of block sharpness.
-   */
-  AOME_SET_QUANT_SHARPNESS = 165,
-
   /*!\brief Control SSIM rdmult */
-  AOME_SET_SSIM_RD_MULT = 166,
+  AOME_SET_SSIM_RD_MULT = 165,
 
   /*!\brief Control VMAF Quantization */
-  AOME_SET_VMAF_QUANTIZATION = 167,
+  AOME_SET_VMAF_QUANTIZATION = 166,
 
   /*!\brief Control VMAF Preprocessing */
-  AOME_SET_VMAF_PREPROCESSING = 168,
+  AOME_SET_VMAF_PREPROCESSING = 167,
 
   /*!\brief Control VMAF motion compensation */
-  AOME_SET_VMAF_MOTION_MULT = 169,
+  AOME_SET_VMAF_MOTION_MULT = 168,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -1758,9 +1750,6 @@ AOM_CTRL_USE_TYPE(AOME_SET_ENABLEAUTOALTREF, unsigned int)
 
 AOM_CTRL_USE_TYPE(AOME_SET_SHARPNESS, unsigned int)
 #define AOM_CTRL_AOME_SET_SHARPNESS
-
-AOM_CTRL_USE_TYPE(AOME_SET_QUANT_SHARPNESS, unsigned int)
-#define AOM_CTRL_AOME_SET_QUANT_SHARPNESS
 
 AOM_CTRL_USE_TYPE(AOME_SET_STATIC_THRESHOLD, unsigned int)
 #define AOM_CTRL_AOME_SET_STATIC_THRESHOLD
