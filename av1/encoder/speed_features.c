@@ -2186,7 +2186,8 @@ static AOM_INLINE void init_winner_mode_sf(
   winner_mode_sf->prune_winner_mode_eval_level = 0;
 }
 
-static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf, AV1EncoderConfig *oxcf) {
+static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf,
+                                   const AV1EncoderConfig *oxcf) {
   const TuneCfg *tune_params = &oxcf->tune_cfg;
   lpf_sf->disable_loop_restoration_chroma = 0;
   lpf_sf->disable_loop_restoration_luma = 0;
@@ -2202,12 +2203,17 @@ static AOM_INLINE void init_lpf_sf(LOOP_FILTER_SPEED_FEATURES *lpf_sf, AV1Encode
   // Set decoder side speed feature to use less dual sgr modes
   lpf_sf->dual_sgr_penalty_level = 0;
   // Enable Wiener and Self-guided Loop restoration filters by default.
-  if (tune_params->content == AOM_CONTENT_PSY) {
+  if (tune_params->content == AOM_CONTENT_PSY ||
+  tune_params->content == AOM_CONTENT_PSY101) {
     lpf_sf->disable_wiener_filter = true;
   } else {
     lpf_sf->disable_wiener_filter = false;
   }
-  lpf_sf->disable_sgr_filter = false;
+  if (tune_params->content == AOM_CONTENT_PSY101) {
+    lpf_sf->disable_sgr_filter = true;
+  } else {
+    lpf_sf->disable_sgr_filter = false;
+  }
   lpf_sf->disable_wiener_coeff_refine_search = false;
   lpf_sf->use_downsampled_wiener_stats = 0;
 }
