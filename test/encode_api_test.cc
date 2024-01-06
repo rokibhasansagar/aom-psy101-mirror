@@ -392,6 +392,7 @@ class AV1Encoder {
  public:
   explicit AV1Encoder(int speed) : speed_(speed) {}
   ~AV1Encoder();
+
   void Configure(unsigned int threads, unsigned int width, unsigned int height,
                  aom_rc_mode end_usage, unsigned int usage);
   void Encode(bool key_frame);
@@ -514,6 +515,27 @@ TEST(EncodeAPI, Buganizer310766628) {
   encoder.Configure(2, 759, 383, AOM_VBR, AOM_USAGE_REALTIME);
 
   // Encode a frame. This will trigger the assertion failure.
+  encoder.Encode(false);
+}
+
+// This test covers a possible use case where the change of frame sizes and
+// thread numbers happens before and after the first frame coding.
+TEST(EncodeAPI, Buganizer310455204) {
+  AV1Encoder encoder(7);
+
+  encoder.Configure(0, 1915, 503, AOM_VBR, AOM_USAGE_REALTIME);
+
+  encoder.Configure(4, 1, 1, AOM_VBR, AOM_USAGE_REALTIME);
+
+  encoder.Configure(6, 559, 503, AOM_CBR, AOM_USAGE_REALTIME);
+
+  // Encode a frame.
+  encoder.Encode(false);
+
+  // Increase the number of threads.
+  encoder.Configure(16, 1915, 503, AOM_CBR, AOM_USAGE_REALTIME);
+
+  // Encode a frame.
   encoder.Encode(false);
 }
 

@@ -377,9 +377,7 @@ static AOM_INLINE void sync_lf_workers(AVxWorker *const workers,
       error_info = ((LFWorkerData *)worker->data2)->error_info;
     }
   }
-  if (had_error)
-    aom_internal_error(cm->error, error_info.error_code, "%s",
-                       error_info.detail);
+  if (had_error) aom_internal_error_copy(cm->error, &error_info);
 }
 
 // Row-based multi-threaded loopfilter hook
@@ -611,7 +609,8 @@ void av1_loop_restoration_alloc(AV1LrSync *lr_sync, AV1_COMMON *cm,
   }
 #endif  // CONFIG_MULTITHREAD
   CHECK_MEM_ERROR(cm, lr_sync->lrworkerdata,
-                  aom_malloc(num_workers * sizeof(*(lr_sync->lrworkerdata))));
+                  aom_calloc(num_workers, sizeof(*(lr_sync->lrworkerdata))));
+  lr_sync->num_workers = num_workers;
 
   for (int worker_idx = 0; worker_idx < num_workers; ++worker_idx) {
     if (worker_idx < num_workers - 1) {
@@ -625,8 +624,6 @@ void av1_loop_restoration_alloc(AV1LrSync *lr_sync, AV1_COMMON *cm,
       lr_sync->lrworkerdata[worker_idx].rlbs = cm->rlbs;
     }
   }
-
-  lr_sync->num_workers = num_workers;
 
   for (int j = 0; j < num_planes; j++) {
     CHECK_MEM_ERROR(
@@ -907,9 +904,7 @@ static AOM_INLINE void sync_lr_workers(AVxWorker *const workers,
       error_info = ((LRWorkerData *)worker->data2)->error_info;
     }
   }
-  if (had_error)
-    aom_internal_error(cm->error, error_info.error_code, "%s",
-                       error_info.detail);
+  if (had_error) aom_internal_error_copy(cm->error, &error_info);
 }
 
 static void foreach_rest_unit_in_planes_mt(AV1LrStruct *lr_ctxt,
@@ -1032,9 +1027,7 @@ static AOM_INLINE void sync_cdef_workers(AVxWorker *const workers,
       error_info = ((AV1CdefWorkerData *)worker->data2)->error_info;
     }
   }
-  if (had_error)
-    aom_internal_error(cm->error, error_info.error_code, "%s",
-                       error_info.detail);
+  if (had_error) aom_internal_error_copy(cm->error, &error_info);
 }
 
 // Updates the row index of the next job to be processed.

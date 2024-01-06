@@ -1535,6 +1535,10 @@ enum aome_enc_control_id {
    */
   AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR = 164,
 
+  /*!\brief Codec control to set the frame drop mode for SVC.
+   */
+  AV1E_SET_SVC_FRAME_DROP_MODE = 165,
+
   /*!\brief Control SSIM rdmult */
   AOME_SET_SSIM_RD_MULT = 165,
 
@@ -1714,6 +1718,12 @@ typedef struct aom_svc_ref_frame_comp_pred {
   // LAST2_LAST (1), and ALTREF_LAST (2).
   int use_comp_pred[3]; /**<Compound reference flag. */
 } aom_svc_ref_frame_comp_pred_t;
+
+/*!brief Frame drop modes for spatial/quality layer SVC */
+typedef enum {
+  LAYER_DROP,           /**< Any spatial layer can drop. */
+  FULL_SUPERFRAME_DROP, /**< Only full superframe can drop. */
+} SVC_FRAME_DROP_MODE;
 
 /*!\cond */
 /*!\brief Encoder control function parameter type
@@ -2193,6 +2203,9 @@ AOM_CTRL_USE_TYPE(AV1E_GET_LUMA_CDEF_STRENGTH, int *)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_BITRATE_ONE_PASS_CBR, unsigned int)
 #define AOM_CTRL_AV1E_SET_BITRATE_ONE_PASS_CBR
+
+AOM_CTRL_USE_TYPE(AV1E_SET_SVC_FRAME_DROP_MODE, unsigned int)
+#define AOM_CTRL_AV1E_SET_SVC_FRAME_DROP_MODE
 
 AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, int)
 #define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR

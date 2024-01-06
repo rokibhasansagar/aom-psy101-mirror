@@ -514,6 +514,7 @@ static void set_allintra_speed_features_framesize_independent(
     sf->part_sf.prune_rectangular_split_based_on_qidx =
         allow_screen_content_tools ? 0 : 2;
     sf->part_sf.prune_rect_part_using_4x4_var_deviation = true;
+    sf->part_sf.prune_rect_part_using_none_pred_mode = true;
     sf->part_sf.prune_sub_8x8_partition_level =
         allow_screen_content_tools ? 0 : 1;
     sf->part_sf.prune_part4_search = 3;
@@ -1593,8 +1594,9 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
       }
     }
     if (cpi->rc.max_block_source_sad > 20000 &&
-        cpi->rc.frame_source_sad > 100 &&
-        cpi->rc.percent_blocks_with_motion > 1 && speed >= 6) {
+        cpi->rc.frame_source_sad > 100 && speed >= 6 &&
+        (cpi->rc.percent_blocks_with_motion > 1 ||
+         cpi->svc.last_layer_dropped[0])) {
       sf->mv_sf.search_method = NSTEP;
       sf->rt_sf.fullpel_search_step_param = 2;
     }
@@ -1616,7 +1618,10 @@ static void set_rt_speed_feature_framesize_dependent(const AV1_COMP *const cpi,
     // Disable for use_highbitdepth = 1 to mitigate issue: b/303023614.
     sf->rt_sf.estimate_motion_for_var_based_partition = 0;
   }
-  if (cpi->oxcf.superres_cfg.enable_superres) sf->rt_sf.use_rtc_tf = 0;
+  if (cpi->oxcf.superres_cfg.enable_superres) {
+    sf->rt_sf.use_rtc_tf = 0;
+    sf->rt_sf.nonrd_prune_ref_frame_search = 1;
+  }
 }
 
 // TODO(kyslov): now this is very similar to
@@ -1997,6 +2002,7 @@ static AOM_INLINE void init_part_sf(PARTITION_SPEED_FEATURES *part_sf) {
   part_sf->prune_ext_part_using_split_info = 0;
   part_sf->prune_rectangular_split_based_on_qidx = 0;
   part_sf->prune_rect_part_using_4x4_var_deviation = false;
+  part_sf->prune_rect_part_using_none_pred_mode = false;
   part_sf->early_term_after_none_split = 0;
   part_sf->ml_predict_breakout_level = 0;
   part_sf->prune_sub_8x8_partition_level = 0;

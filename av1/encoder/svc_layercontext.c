@@ -77,6 +77,8 @@ void av1_init_layer_context(AV1_COMP *const cpi) {
     }
     svc->downsample_filter_type[sl] = BILINEAR;
     svc->downsample_filter_phase[sl] = 8;
+    svc->last_layer_dropped[sl] = false;
+    svc->drop_spatial_layer[sl] = false;
   }
   if (svc->number_spatial_layers == 3) {
     svc->downsample_filter_type[0] = EIGHTTAP_SMOOTH;
@@ -320,8 +322,12 @@ void av1_save_layer_context(AV1_COMP *const cpi) {
       svc->temporal_layer_fb[i] = svc->temporal_layer_id;
     }
   }
-  if (svc->spatial_layer_id == svc->number_spatial_layers - 1)
+  if (svc->spatial_layer_id == svc->number_spatial_layers - 1) {
     svc->current_superframe++;
+    // Reset drop flag to false for next superframe.
+    for (int sl = 0; sl < svc->number_spatial_layers; sl++)
+      svc->drop_spatial_layer[sl] = false;
+  }
 }
 
 int av1_svc_primary_ref_frame(const AV1_COMP *const cpi) {
@@ -402,6 +408,7 @@ void av1_get_layer_resolution(const int width_org, const int height_org,
 
 void av1_one_pass_cbr_svc_start_layer(AV1_COMP *const cpi) {
   SVC *const svc = &cpi->svc;
+  AV1_COMMON *const cm = &cpi->common;
   LAYER_CONTEXT *lc = NULL;
   int width = 0, height = 0;
   lc = &svc->layer_context[svc->spatial_layer_id * svc->number_temporal_layers +
@@ -423,13 +430,13 @@ void av1_one_pass_cbr_svc_start_layer(AV1_COMP *const cpi) {
   if (width * height <= 320 * 240)
     svc->downsample_filter_type[svc->spatial_layer_id] = EIGHTTAP_SMOOTH;
 
-  cpi->common.width = width;
-  cpi->common.height = height;
+  cm->width = width;
+  cm->height = height;
   alloc_mb_mode_info_buffers(cpi);
   av1_update_frame_size(cpi);
   if (svc->spatial_layer_id == svc->number_spatial_layers - 1) {
-    svc->mi_cols_full_resoln = cpi->common.mi_params.mi_cols;
-    svc->mi_rows_full_resoln = cpi->common.mi_params.mi_rows;
+    svc->mi_cols_full_resoln = cm->mi_params.mi_cols;
+    svc->mi_rows_full_resoln = cm->mi_params.mi_rows;
   }
 }
 
