@@ -968,7 +968,7 @@ static void set_good_speed_features_framesize_independent(
   sf->tx_sf.model_based_prune_tx_search_level = 1;
   sf->tx_sf.tx_type_search.use_reduced_intra_txset = 1;
 
-  sf->tpl_sf.search_method = NSTEP_8PT;
+  sf->tpl_sf.search_method = BIGDIA;
 
   sf->rt_sf.use_nonrd_pick_mode = 0;
   sf->rt_sf.use_real_time_ref_set = 0;
@@ -1080,7 +1080,7 @@ static void set_good_speed_features_framesize_independent(
     sf->intra_sf.skip_filter_intra_in_inter_frames = 1;
 
     sf->tpl_sf.prune_starting_mv = 1;
-    sf->tpl_sf.search_method = DIAMOND;
+    sf->tpl_sf.search_method = FAST_BIGDIA;
 
     sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
     sf->rd_sf.use_mb_rd_hash = 1;
@@ -1146,7 +1146,6 @@ static void set_good_speed_features_framesize_independent(
     sf->tpl_sf.prune_intra_modes = 1;
     sf->tpl_sf.reduce_first_step_size = 6;
     sf->tpl_sf.subpel_force_stop = QUARTER_PEL;
-    sf->tpl_sf.search_method = FAST_BIGDIA;
     sf->tpl_sf.gop_length_decision_method = 1;
 
     sf->tx_sf.adaptive_txb_search_level = boosted ? 2 : 3;
