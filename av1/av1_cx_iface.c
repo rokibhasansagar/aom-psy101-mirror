@@ -234,7 +234,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // enable_tpl_model
   1,              // enable_keyframe_filtering
   15,             // arnr_max_frames
-  2,              // arnr_strength
+  1,              // arnr_strength
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
@@ -389,7 +389,7 @@ static const struct av1_extracfg default_extra_cfg = {
   1,              // enable_tpl_model
   1,              // enable_keyframe_filtering
   15,             // arnr_max_frames
-  2,              // arnr_strength
+  1,              // arnr_strength
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height

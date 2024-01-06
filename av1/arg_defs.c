@@ -294,7 +294,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .arnr_maxframes =
       ARG_DEF(NULL, "arnr-maxframes", 1, "AltRef max frames (0..15 (default))"),
   .arnr_strength =
-      ARG_DEF(NULL, "arnr-strength", 1, "AltRef filter strength (0..4), default is 2"),
+      ARG_DEF(NULL, "arnr-strength", 1,
+              "AltRef filter strength (0..4), default is 1"),
   .tune_metric = ARG_DEF_ENUM(NULL, "tune", 1, "Distortion metric tuned with",
                               tuning_enum),
   .dist_metric = ARG_DEF_ENUM(
