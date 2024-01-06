@@ -1540,16 +1540,16 @@ enum aome_enc_control_id {
   AV1E_SET_SVC_FRAME_DROP_MODE = 165,
 
   /*!\brief Control SSIM rdmult */
-  AOME_SET_SSIM_RD_MULT = 165,
+  AOME_SET_SSIM_RD_MULT = 166,
 
   /*!\brief Control VMAF Quantization */
-  AOME_SET_VMAF_QUANTIZATION = 166,
+  AOME_SET_VMAF_QUANTIZATION = 167,
 
   /*!\brief Control VMAF Preprocessing */
-  AOME_SET_VMAF_PREPROCESSING = 167,
+  AOME_SET_VMAF_PREPROCESSING = 168,
 
   /*!\brief Control VMAF motion compensation */
-  AOME_SET_VMAF_MOTION_MULT = 168,
+  AOME_SET_VMAF_MOTION_MULT = 169,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
