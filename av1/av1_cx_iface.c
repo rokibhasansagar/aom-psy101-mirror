@@ -244,7 +244,7 @@ static const struct av1_extracfg default_extra_cfg = {
   ".",                                        // partition info path
   0,                                          // enable rate guide deltaq
   "./rate_map.txt",                           // rate distribution input
-  AOM_DIST_METRIC_PSNR,                       // dist_metric
+  AOM_DIST_METRIC_QM_PSNR,                    // dist_metric
   10,                                         // cq_level
   0,                                          // rc_max_intra_bitrate_pct
   0,                                          // rc_max_inter_bitrate_pct
@@ -399,7 +399,7 @@ static const struct av1_extracfg default_extra_cfg = {
   ".",                                        // partition info path
   0,                                          // enable rate guide deltaq
   "./rate_map.txt",                           // rate distribution input
-  AOM_DIST_METRIC_PSNR,                       // dist_metric
+  AOM_DIST_METRIC_QM_PSNR,                    // dist_metric
   10,                                         // cq_level
   0,                                          // rc_max_intra_bitrate_pct
   0,                                          // rc_max_inter_bitrate_pct
