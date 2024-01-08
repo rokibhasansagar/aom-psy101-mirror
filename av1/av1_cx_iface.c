@@ -1241,7 +1241,6 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
       cfg->use_fixed_qp_offsets && (rc_cfg->mode == AOM_Q);
   q_cfg->enable_hdr_deltaq =
       (q_cfg->deltaq_mode == DELTA_Q_HDR) &&
-      (cfg->g_bit_depth == AOM_BITS_10) &&
       (extra_cfg->color_primaries == AOM_CICP_CP_BT_2020);
 
   tool_cfg->enable_deltalf_mode =

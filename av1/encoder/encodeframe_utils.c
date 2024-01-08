@@ -1073,7 +1073,6 @@ static const int hdr10_qp_offset[HDR_QP_LEVELS] = { 3,  2,  1,  0,  -1,
 int av1_get_q_for_hdr(AV1_COMP *const cpi, MACROBLOCK *const x,
                       BLOCK_SIZE bsize, int mi_row, int mi_col) {
   AV1_COMMON *const cm = &cpi->common;
-  assert(cm->seq_params->bit_depth == AOM_BITS_10);
 
 #if DISABLE_HDR_LUMA_DELTAQ
   (void)x;
