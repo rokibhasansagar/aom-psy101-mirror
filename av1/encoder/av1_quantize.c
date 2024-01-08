@@ -862,9 +862,6 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
   if (enable_hdr_deltaq) {
     dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
     dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
-    if (dqpCb != dqpCr) {
-      cm->seq_params->separate_uv_delta_q = 1;
-    }
   }
 
   // TODO(aomedia:2717): need to design better delta
@@ -884,6 +881,10 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
         dqpCb += 0;
         dqpCr += 0;
     }
+  }
+
+  if (dqpCb != dqpCr) {
+    cm->seq_params->separate_uv_delta_q = 1;
   }
 
   quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
