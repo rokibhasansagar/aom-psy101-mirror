@@ -26,7 +26,7 @@ its fork https://github.com/Clybius/aom-av1-lavish/tree/Endless_Instability, as 
 ### Get the code
 
 ~~~
-    $ git clone https://gitlab.com/damian101/aom.git -b psy101 aom-psy101/
+    $ git clone https://gitlab.com/damian101/aom-psy101.git
     $ cd aom-psy101/
 ~~~
 
@@ -62,7 +62,7 @@ Both types of options are set at the time CMake is run. The following example
 enables ccache, disables unit tests and disables the AV1 decoder:
 
 ~~~
-    $ cmake path/to/aom -DENABLE_CCACHE=1 -DENABLE_TESTS=0 -DCONFIG_AV1_DECODER=0
+    $ cmake path/to/aom-psy101 -DENABLE_CCACHE=1 -DENABLE_TESTS=0 -DCONFIG_AV1_DECODER=0
     $ make
 ~~~
 
@@ -94,7 +94,7 @@ will be used unless you set the following flag when running the encoder:
 ### Concrete building and installation example, for Linux
 
 ~~~
-    $ git clone https://gitlab.com/damian101/aom.git -b psy101 aom-psy101/ && cd aom-psy101/
+    $ git clone https://gitlab.com/damian101/aom-psy101 && cd aom-psy101/
     $ mkdir aom_build && cd aom_build
     $ cmake .. -DENABLE_TESTS=0 -DCONFIG_AV1_DECODER=0 -DENABLE_DOCS=0 -DCONFIG_TUNE_VMAF=1 -DCMAKE_CXX_FLAGS="-flto -O3 -march=native" -DCMAKE_C_FLAGS="-flto -O3 -march=native" && make -j 16
     $ sudo cp aomenc /usr/bin/
