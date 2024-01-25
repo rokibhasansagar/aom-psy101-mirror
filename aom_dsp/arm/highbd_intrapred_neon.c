@@ -13,6 +13,7 @@
 
 #include "config/aom_config.h"
 #include "config/aom_dsp_rtcd.h"
+#include "config/av1_rtcd.h"
 
 #include "aom/aom_integer.h"
 #include "aom_dsp/arm/sum_neon.h"
@@ -2661,12 +2662,14 @@ static void highbd_dr_prediction_z3_upsample1_neon(uint16_t *dst,
       c += 4;
     } while (c < bw);
   } else {
+    assert(bh % 8 == 0);
+
     int y = dy;
     int c = 0;
     do {
       int r = 0;
       do {
-        // Fully unroll the 4x4 block to allow us to use immediate lane-indexed
+        // Fully unroll the 4x8 block to allow us to use immediate lane-indexed
         // multiply instructions.
         const uint16x4_t shifts1 =
             vand_u16(vmla_n_u16(vdup_n_u16(y), iota1x4, dy), shift_mask);
@@ -2695,7 +2698,7 @@ static void highbd_dr_prediction_z3_upsample1_neon(uint16_t *dst,
         for (int r2 = 0; r2 < 4; ++r2) {
           vst1_u16(dst + (r + r2 + 4) * stride + c, vget_high_u16(out[r2]));
         }
-        r += 4;
+        r += 8;
       } while (r < bh);
       y += 4 * dy;
       c += 4;

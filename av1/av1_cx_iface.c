@@ -23,6 +23,7 @@
 
 #include "aom_dsp/flow_estimation/flow_estimation.h"
 
+#include "av1/av1_cx_iface.h"
 #include "av1/av1_iface_common.h"
 #include "av1/encoder/bitstream.h"
 #include "av1/encoder/encoder.h"
@@ -638,6 +639,11 @@ static aom_codec_err_t allocate_and_set_string(const char *src,
       ERROR(#memb " out of range [" #lo ".." #hi "]"); \
   } while (0)
 
+#define RANGE_CHECK_LO(p, memb, lo)                                     \
+  do {                                                                  \
+    if (!((p)->memb >= (lo))) ERROR(#memb " out of range [" #lo "..]"); \
+  } while (0)
+
 #define RANGE_CHECK_HI(p, memb, hi)                                     \
   do {                                                                  \
     if (!((p)->memb <= (hi))) ERROR(#memb " out of range [.." #hi "]"); \
@@ -677,6 +683,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK(cfg, g_timebase.num, 1, cfg->g_timebase.den);
   RANGE_CHECK_HI(cfg, g_profile, MAX_PROFILES - 1);
 
+  RANGE_CHECK_LO(cfg, rc_target_bitrate, 1);
   RANGE_CHECK_HI(cfg, rc_max_quantizer, 63);
   RANGE_CHECK_HI(cfg, rc_min_quantizer, cfg->rc_max_quantizer);
   RANGE_CHECK_BOOL(extra_cfg, lossless);
@@ -1535,6 +1542,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
     oxcf->override_preprocessing = 1;
   }
 #endif
+}
+
+AV1EncoderConfig av1_get_encoder_config(const aom_codec_enc_cfg_t *cfg) {
+  AV1EncoderConfig oxcf;
+  struct av1_extracfg extra_cfg = default_extra_cfg;
+  set_encoder_config(&oxcf, cfg, &extra_cfg);
+  return oxcf;
 }
 
 static aom_codec_err_t encoder_set_config(aom_codec_alg_priv_t *ctx,
@@ -2663,8 +2677,8 @@ static aom_codec_err_t ctrl_set_svc_frame_drop_mode(aom_codec_alg_priv_t *ctx,
   AV1_PRIMARY *const ppi = ctx->ppi;
   AV1_COMP *const cpi = ppi->cpi;
   cpi->svc.framedrop_mode = CAST(AV1E_SET_SVC_FRAME_DROP_MODE, args);
-  if (cpi->svc.framedrop_mode != LAYER_DROP &&
-      cpi->svc.framedrop_mode != FULL_SUPERFRAME_DROP)
+  if (cpi->svc.framedrop_mode != AOM_LAYER_DROP &&
+      cpi->svc.framedrop_mode != AOM_FULL_SUPERFRAME_DROP)
     return AOM_CODEC_INVALID_PARAM;
   else
     return AOM_CODEC_OK;
@@ -2696,10 +2710,12 @@ static aom_codec_err_t create_stats_buffer(FIRSTPASS_STATS **frame_stats_buffer,
 }
 #endif
 
-static aom_codec_err_t create_context_and_bufferpool(
-    AV1_PRIMARY *ppi, AV1_COMP **p_cpi, BufferPool **p_buffer_pool,
-    const AV1EncoderConfig *oxcf, COMPRESSOR_STAGE stage,
-    int lap_lag_in_frames) {
+aom_codec_err_t av1_create_context_and_bufferpool(AV1_PRIMARY *ppi,
+                                                  AV1_COMP **p_cpi,
+                                                  BufferPool **p_buffer_pool,
+                                                  const AV1EncoderConfig *oxcf,
+                                                  COMPRESSOR_STAGE stage,
+                                                  int lap_lag_in_frames) {
   aom_codec_err_t res = AOM_CODEC_OK;
   BufferPool *buffer_pool = *p_buffer_pool;
 
@@ -2744,7 +2760,7 @@ static aom_codec_err_t ctrl_set_fp_mt(aom_codec_alg_priv_t *ctx, va_list args) {
     if (num_fp_contexts > 1) {
       int i;
       for (i = 1; i < num_fp_contexts; i++) {
-        int res = create_context_and_bufferpool(
+        int res = av1_create_context_and_bufferpool(
             ctx->ppi, &ctx->ppi->parallel_cpi[i], &ctx->buffer_pool, &ctx->oxcf,
             ENCODE_STAGE, -1);
         if (res != AOM_CODEC_OK) {
@@ -2841,7 +2857,7 @@ static aom_codec_err_t encoder_init(aom_codec_ctx_t *ctx) {
 #endif
 
       assert(priv->ppi->num_fp_contexts >= 1);
-      res = create_context_and_bufferpool(
+      res = av1_create_context_and_bufferpool(
           priv->ppi, &priv->ppi->parallel_cpi[0], &priv->buffer_pool,
           &priv->oxcf, ENCODE_STAGE, -1);
       if (res != AOM_CODEC_OK) {
@@ -2855,7 +2871,7 @@ static aom_codec_err_t encoder_init(aom_codec_ctx_t *ctx) {
 
       // Create another compressor if look ahead is enabled
       if (res == AOM_CODEC_OK && *num_lap_buffers) {
-        res = create_context_and_bufferpool(
+        res = av1_create_context_and_bufferpool(
             priv->ppi, &priv->ppi->cpi_lap, &priv->buffer_pool_lap, &priv->oxcf,
             LAP_STAGE, clamp(lap_lag_in_frames, 0, MAX_LAG_BUFFERS));
       }
@@ -2865,8 +2881,8 @@ static aom_codec_err_t encoder_init(aom_codec_ctx_t *ctx) {
   return res;
 }
 
-static void destroy_context_and_bufferpool(AV1_COMP *cpi,
-                                           BufferPool **p_buffer_pool) {
+void av1_destroy_context_and_bufferpool(AV1_COMP *cpi,
+                                        BufferPool **p_buffer_pool) {
   av1_remove_compressor(cpi);
   if (*p_buffer_pool) {
     av1_free_ref_frame_buffers(*p_buffer_pool);
@@ -2930,12 +2946,13 @@ static aom_codec_err_t encoder_destroy(aom_codec_alg_priv_t *ctx) {
 #endif
 
     for (int i = 0; i < MAX_PARALLEL_FRAMES; i++) {
-      destroy_context_and_bufferpool(ppi->parallel_cpi[i], &ctx->buffer_pool);
+      av1_destroy_context_and_bufferpool(ppi->parallel_cpi[i],
+                                         &ctx->buffer_pool);
     }
     ppi->cpi = NULL;
 
     if (ppi->cpi_lap) {
-      destroy_context_and_bufferpool(ppi->cpi_lap, &ctx->buffer_pool_lap);
+      av1_destroy_context_and_bufferpool(ppi->cpi_lap, &ctx->buffer_pool_lap);
     }
     av1_remove_primary_compressor(ppi);
   }
