@@ -239,7 +239,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
-  4,              // gf_max_pyr_height
+  5,              // gf_max_pyr_height
   AOM_TUNE_SSIM,  // tuning
   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
   ".",                                        // partition info path
@@ -394,7 +394,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,              // min_gf_interval; 0 -> default decision
   0,              // max_gf_interval; 0 -> default decision
   0,              // gf_min_pyr_height
-  4,              // gf_max_pyr_height
+  5,              // gf_max_pyr_height
   AOM_TUNE_SSIM,  // tuning
   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
   ".",                                        // partition info path
@@ -1335,7 +1335,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   gf_cfg->min_gf_interval = extra_cfg->min_gf_interval;
   gf_cfg->max_gf_interval = extra_cfg->max_gf_interval;
   gf_cfg->gf_min_pyr_height = extra_cfg->gf_min_pyr_height;
-  gf_cfg->gf_max_pyr_height = extra_cfg->gf_max_pyr_height;
+  if (extra_cfg->gf_max_pyr_height == 5 &&
+      (tune_cfg->content == AOM_CONTENT_PSY ||
+       tune_cfg->content == AOM_CONTENT_PSY101)) {
+    gf_cfg->gf_max_pyr_height = 4;
+  } else {
+    gf_cfg->gf_max_pyr_height = extra_cfg->gf_max_pyr_height;
+  }
 
   // Set tune related configuration.
   tune_cfg->tuning = extra_cfg->tuning;
