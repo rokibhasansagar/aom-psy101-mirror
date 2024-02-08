@@ -555,6 +555,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .error_resilient_mode = ARG_DEF(NULL, "error-resilient", 1,
                                   "Enable error resilient features "
                                   "(0: false (default), 1: true)"),
+  .fast_decode =
+      ARG_DEF(NULL, "fast-decode", 1,
+              "Improve ease of decoding the bitstream"
+              "(0: false (default), 1: true)"),
   .aq_mode = ARG_DEF(NULL, "aq-mode", 1,
                      "Adaptive quantization mode (0: off (default), 1: "
                      "variance 2: complexity, "

@@ -16,6 +16,8 @@
 #include "av1/common/tile_common.h"
 #include "aom_dsp/aom_dsp_common.h"
 
+#include "av1/encoder/encoder.h"
+
 void av1_tile_init(TileInfo *tile, const AV1_COMMON *cm, int row, int col) {
   av1_tile_set_row(tile, cm, row);
   av1_tile_set_col(tile, cm, col);
@@ -29,7 +31,8 @@ static int tile_log2(int blk_size, int target) {
   return k;
 }
 
-void av1_get_tile_limits(AV1_COMMON *const cm) {
+void av1_get_tile_limits(AV1_COMP *const cpi) {
+  AV1_COMMON *const cm = &cpi->common;
   const SequenceHeader *const seq_params = cm->seq_params;
   CommonTileParams *const tiles = &cm->tiles;
   const int sb_cols =
@@ -38,7 +41,11 @@ void av1_get_tile_limits(AV1_COMMON *const cm) {
       CEIL_POWER_OF_TWO(cm->mi_params.mi_rows, seq_params->mib_size_log2);
 
   const int sb_size_log2 = seq_params->mib_size_log2 + MI_SIZE_LOG2;
-  tiles->max_width_sb = MAX_TILE_WIDTH >> sb_size_log2;
+  if (cpi->oxcf.fast_decode == 1) {
+    tiles->max_width_sb = ((MAX_TILE_WIDTH / 4) - 1) >> sb_size_log2;
+  } else {
+    tiles->max_width_sb = MAX_TILE_WIDTH >> sb_size_log2;
+  }
 
 #if CONFIG_CWG_C013
   bool use_level_7_above = false;

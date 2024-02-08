@@ -19,6 +19,7 @@ extern "C" {
 #include "config/aom_config.h"
 #include "aom_dsp/rect.h"
 
+struct AV1_COMP;
 struct AV1Common;
 struct SequenceHeader;
 struct CommonTileParams;
@@ -57,7 +58,7 @@ PixelRect av1_get_tile_rect(const TileInfo *tile_info,
 #endif
 
 void av1_get_uniform_tile_size(const struct AV1Common *cm, int *w, int *h);
-void av1_get_tile_limits(struct AV1Common *const cm);
+void av1_get_tile_limits(struct AV1_COMP *const cpi);
 void av1_calculate_tile_cols(const struct SequenceHeader *const seq_params,
                              int cm_mi_rows, int cm_mi_cols,
                              struct CommonTileParams *const tiles);
