@@ -2667,13 +2667,12 @@ static int encode_without_recode(AV1_COMP *cpi) {
   cm->cur_frame->seg.enabled = cm->seg.enabled;
 
   // This is for rtc temporal filtering case.
-  if (is_psnr_calc_enabled(cpi) && cpi->sf.rt_sf.use_rtc_tf &&
-      cm->current_frame.frame_type != KEY_FRAME) {
+  if (is_psnr_calc_enabled(cpi) && cpi->sf.rt_sf.use_rtc_tf) {
     const SequenceHeader *seq_params = cm->seq_params;
 
     if (cpi->orig_source.buffer_alloc_sz == 0 ||
-        cpi->last_source->y_width != cpi->source->y_width ||
-        cpi->last_source->y_height != cpi->source->y_height) {
+        cpi->rc.prev_coded_width != cpi->oxcf.frm_dim_cfg.width ||
+        cpi->rc.prev_coded_height != cpi->oxcf.frm_dim_cfg.height) {
       // Allocate a source buffer to store the true source for psnr calculation.
       if (aom_alloc_frame_buffer(
               &cpi->orig_source, cpi->oxcf.frm_dim_cfg.width,
@@ -2684,9 +2683,9 @@ static int encode_without_recode(AV1_COMP *cpi) {
                            "Failed to allocate scaled buffer");
     }
 
-    aom_yv12_copy_y(cpi->source, &cpi->orig_source);
-    aom_yv12_copy_u(cpi->source, &cpi->orig_source);
-    aom_yv12_copy_v(cpi->source, &cpi->orig_source);
+    aom_yv12_copy_y(cpi->source, &cpi->orig_source, 1);
+    aom_yv12_copy_u(cpi->source, &cpi->orig_source, 1);
+    aom_yv12_copy_v(cpi->source, &cpi->orig_source, 1);
   }
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
@@ -2725,9 +2724,9 @@ static int encode_without_recode(AV1_COMP *cpi) {
       (cm->width != cpi->unscaled_source->y_crop_width ||
        cm->height != cpi->unscaled_source->y_crop_height)) {
     cpi->scaled_last_source_available = 1;
-    aom_yv12_copy_y(&cpi->scaled_source, &cpi->scaled_last_source);
-    aom_yv12_copy_u(&cpi->scaled_source, &cpi->scaled_last_source);
-    aom_yv12_copy_v(&cpi->scaled_source, &cpi->scaled_last_source);
+    aom_yv12_copy_y(&cpi->scaled_source, &cpi->scaled_last_source, 1);
+    aom_yv12_copy_u(&cpi->scaled_source, &cpi->scaled_last_source, 1);
+    aom_yv12_copy_v(&cpi->scaled_source, &cpi->scaled_last_source, 1);
   }
 
 #if CONFIG_COLLECT_COMPONENT_TIMING
@@ -4054,7 +4053,7 @@ int av1_encode(AV1_COMP *const cpi, uint8_t *const dest,
 }
 
 #if CONFIG_DENOISE
-static int apply_denoise_2d(AV1_COMP *cpi, YV12_BUFFER_CONFIG *sd,
+static int apply_denoise_2d(AV1_COMP *cpi, const YV12_BUFFER_CONFIG *sd,
                             int block_size, float noise_level,
                             int64_t time_stamp, int64_t end_time) {
   AV1_COMMON *const cm = &cpi->common;
@@ -4089,7 +4088,7 @@ static int apply_denoise_2d(AV1_COMP *cpi, YV12_BUFFER_CONFIG *sd,
 #endif
 
 int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
-                          YV12_BUFFER_CONFIG *sd, int64_t time_stamp,
+                          const YV12_BUFFER_CONFIG *sd, int64_t time_stamp,
                           int64_t end_time) {
   AV1_COMMON *const cm = &cpi->common;
   const SequenceHeader *const seq_params = cm->seq_params;
