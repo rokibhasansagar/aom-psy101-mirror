@@ -1097,8 +1097,6 @@ typedef struct AV1EncoderConfig {
   bool override_preprocessing;
 
   int vmaf_motion_mult;
-
-  int fast_decode;
   /*!\endcond */
 } AV1EncoderConfig;
 

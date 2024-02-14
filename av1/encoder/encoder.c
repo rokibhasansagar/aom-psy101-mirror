@@ -278,14 +278,14 @@ static void auto_tile_size_balancing(AV1_COMMON *const cm, int num_sbs,
   }
 }
 
-static void set_tile_info(AV1_COMP *const cpi, AV1_COMMON *const cm,
+static void set_tile_info(AV1_COMMON *const cm,
                           const TileConfig *const tile_cfg) {
   const CommonModeInfoParams *const mi_params = &cm->mi_params;
   const SequenceHeader *const seq_params = cm->seq_params;
   CommonTileParams *const tiles = &cm->tiles;
   int i, start_sb;
 
-  av1_get_tile_limits(cpi);
+  av1_get_tile_limits(cm);
 
   int sb_cols =
       CEIL_POWER_OF_TWO(mi_params->mi_cols, seq_params->mib_size_log2);
@@ -356,7 +356,7 @@ void av1_update_frame_size(AV1_COMP *cpi) {
                 av1_select_sb_size(&cpi->oxcf, cm->width, cm->height,
                                    cpi->ppi->number_spatial_layers));
 
-  set_tile_info(cpi, cm, &cpi->oxcf.tile_cfg);
+  set_tile_info(cm, &cpi->oxcf.tile_cfg);
 }
 
 static INLINE int does_level_match(int width, int height, double fps,

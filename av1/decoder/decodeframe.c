@@ -2084,7 +2084,7 @@ static AOM_INLINE void read_tile_info_max_tile(
   int height_sb =
       CEIL_POWER_OF_TWO(cm->mi_params.mi_rows, seq_params->mib_size_log2);
 
-  av1_get_tile_limits(AV1_COMP *cpi);
+  av1_get_tile_limits(cm);
   tiles->uniform_spacing = aom_rb_read_bit(rb);
 
   // Read tile columns
