@@ -205,6 +205,7 @@ struct av1_extracfg {
   int vmaf_quantization;
   int vmaf_preprocessing;
   int vmaf_motion_mult;
+  int fast_decode;
 };
 
 #if CONFIG_REALTIME_ONLY
@@ -374,6 +375,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
+  0,               // fast_decode
 };
 #else
 static const struct av1_extracfg default_extra_cfg = {
@@ -529,6 +531,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
+  0,               // fast_decode
 };
 #endif
 
@@ -922,6 +925,8 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK(extra_cfg, vmaf_motion_mult, 0, 1000);
 #endif
 
+  RANGE_CHECK_HI(extra_cfg, fast_decode, 2);
+
   return AOM_CODEC_OK;
 }
 
@@ -1213,8 +1218,12 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
 
   tool_cfg->error_resilient_mode =
       cfg->g_error_resilient | extra_cfg->error_resilient_mode;
-  tool_cfg->frame_parallel_decoding_mode =
+  if (extra_cfg->fast_decode == 2) {
+    tool_cfg->frame_parallel_decoding_mode = 1;
+  } else {
+    tool_cfg->frame_parallel_decoding_mode =
       extra_cfg->frame_parallel_decoding_mode;
+  }
 
   // Set Quantization related configuration.
   
@@ -1331,7 +1340,8 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   gf_cfg->gf_min_pyr_height = extra_cfg->gf_min_pyr_height;
   if (extra_cfg->gf_max_pyr_height == 5 &&
       (tune_cfg->content == AOM_CONTENT_PSY ||
-       tune_cfg->content == AOM_CONTENT_PSY101)) {
+       tune_cfg->content == AOM_CONTENT_PSY101 ||
+       extra_cfg->fast_decode > 0)) {
     gf_cfg->gf_max_pyr_height = 4;
   } else {
     gf_cfg->gf_max_pyr_height = extra_cfg->gf_max_pyr_height;
@@ -4298,6 +4308,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_rd_mult,
                               argv, err_string)) {
     extra_cfg.ssim_rd_mult = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.fast_decode,
+                              argv, err_string)) {
+    extra_cfg.fast_decode = arg_parse_int_helper(&arg, err_string);
   } else {
     match = 0;
     snprintf(err_string, ARG_ERR_MSG_MAX_LEN, "Cannot find aom option %s",
@@ -4382,6 +4395,13 @@ static aom_codec_err_t ctrl_set_vmaf_motion_mult(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   extra_cfg.vmaf_motion_mult = CAST(AOME_SET_VMAF_MOTION_MULT, args);
+  return update_extra_cfg(ctx, &extra_cfg);
+}
+
+static aom_codec_err_t ctrl_set_fast_decode(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.fast_decode = CAST(AOME_SET_FAST_DECODE, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -4535,6 +4555,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
   { AOME_SET_VMAF_MOTION_MULT, ctrl_set_vmaf_motion_mult },
+  { AOME_SET_FAST_DECODE, ctrl_set_fast_decode },
 
   // Getters
   { AOME_GET_LAST_QUANTIZER, ctrl_get_quantizer },
