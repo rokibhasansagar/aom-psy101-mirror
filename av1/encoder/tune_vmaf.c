@@ -717,22 +717,10 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
   for (int row = 0; row < num_rows; ++row) {
     for (int col = 0; col < num_cols; ++col) {
       const int index = row * num_cols + col;
-      const double vmaf = aom_calc_vmaf_at_index(
-          vmaf_context, cpi->vmaf_info.vmaf_model, index);
-      const double dvmaf = kBaselineVmaf - vmaf;
-
-      const double mse =
-          (double)sses[index] / (double)(resized_y_width * resized_y_height);
       double weight;
-      const double eps = 0.01 / (num_rows * num_cols);
-      if (dvmaf < eps || mse < eps) {
-        weight = 1.0;
-      } else {
-        weight = mse / dvmaf;
-      }
 
-      // Normalize it with a data fitted model.
-      weight = 6.0 * (1.0 - exp(-0.05 * weight)) + 0.8;
+      // Normalize weight with a data fitted model.
+      weight = 6.0 * (1.0 - exp(-0.05)) + 0.8;
       cpi->vmaf_info.rdmult_scaling_factors[index] = weight;
     }
   }
