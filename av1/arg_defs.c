@@ -515,6 +515,12 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .vmaf_motion_mult = ARG_DEF(NULL, "vmaf-motion-mult", 1,
                               "Multiplier for VMAF motion compensation "
                               "(only active with VMAF tunes, defaults to 100)"),
+  .vmaf_rd_resize_factor = ARG_DEF(NULL, "vmaf-rd-resize-factor", 1,
+                                   "Change internal resizing for VMAF RD "
+                                   "calculations\n "
+                                   "                                        "
+                                   "0 - Full res, 1 - Half res (Default), "
+                                   "2 - Quarter res, 3 - Eighth res."),
 #endif
   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
                                  "Partition information read and write path"),

@@ -609,8 +609,11 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
   AV1_COMMON *cm = &cpi->common;
   const int y_width = cpi->source->y_width;
   const int y_height = cpi->source->y_height;
-  const int resized_block_size = BLOCK_32X32;
-  const int resize_factor = 2;
+  const int resized_block_size = cpi->oxcf.vmaf_rd_bsize;
+  const int resize_factor = (cpi->oxcf.vmaf_rd_resize_factor == 0) ? 1 :
+                            (cpi->oxcf.vmaf_rd_resize_factor == 1) ? 2 :
+                            (cpi->oxcf.vmaf_rd_resize_factor == 2) ? 4 :
+                            (cpi->oxcf.vmaf_rd_resize_factor == 3) ? 8 : 2;
   const int bit_depth = cpi->td.mb.e_mbd.bd;
   const int ss_x = cpi->source->subsampling_x;
   const int ss_y = cpi->source->subsampling_y;

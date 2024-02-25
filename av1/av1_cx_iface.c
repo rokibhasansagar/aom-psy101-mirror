@@ -205,6 +205,7 @@ struct av1_extracfg {
   int vmaf_quantization;
   int vmaf_preprocessing;
   int vmaf_motion_mult;
+  unsigned int vmaf_rd_resize_factor;
   int fast_decode;
 };
 
@@ -375,6 +376,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
+  1,               // vmaf_rd_resize_factor
   0,               // fast_decode
 };
 #else
@@ -531,6 +533,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
+  1,               // vmaf_rd_resize_factor
   0,               // fast_decode
 };
 #endif
@@ -923,6 +926,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
   RANGE_CHECK(extra_cfg, vmaf_preprocessing, 0, 3);
   RANGE_CHECK(extra_cfg, vmaf_motion_mult, 0, 1000);
+  RANGE_CHECK_HI(extra_cfg, vmaf_rd_resize_factor, 3);
 #endif
 
   RANGE_CHECK_HI(extra_cfg, fast_decode, 2);
@@ -1551,6 +1555,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   if (oxcf->vmaf_preprocessing > 0) {
     oxcf->override_preprocessing = 1;
   }
+
+  oxcf->vmaf_rd_resize_factor = extra_cfg->vmaf_rd_resize_factor;
+  oxcf->vmaf_rd_bsize = (extra_cfg->vmaf_rd_resize_factor == 0) ? BLOCK_64X64 :
+                        (extra_cfg->vmaf_rd_resize_factor == 1) ? BLOCK_32X32 :
+                        (extra_cfg->vmaf_rd_resize_factor == 2) ? BLOCK_16X16 :
+                        (extra_cfg->vmaf_rd_resize_factor == 3) ? BLOCK_8X8 :
+                        BLOCK_32X32;
 #endif
 }
 
@@ -3943,6 +3954,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_motion_mult,
                               argv, err_string)) {
     extra_cfg.vmaf_motion_mult = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_rd_resize_factor,
+                              argv, err_string)) {
+    extra_cfg.vmaf_rd_resize_factor = arg_parse_int_helper(&arg, err_string);
   }
 #endif
   else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.partition_info_path,
@@ -4398,6 +4412,13 @@ static aom_codec_err_t ctrl_set_vmaf_motion_mult(aom_codec_alg_priv_t *ctx,
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
+static aom_codec_err_t ctrl_set_vmaf_rd_resize_factor(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.vmaf_rd_resize_factor = CAST(AOME_SET_VMAF_RD_RESIZE_FACTOR, args);
+  return update_extra_cfg(ctx, &extra_cfg);
+}
+
 static aom_codec_err_t ctrl_set_fast_decode(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
@@ -4555,6 +4576,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
   { AOME_SET_VMAF_MOTION_MULT, ctrl_set_vmaf_motion_mult },
+  { AOME_SET_VMAF_RD_RESIZE_FACTOR, ctrl_set_vmaf_rd_resize_factor },
   { AOME_SET_FAST_DECODE, ctrl_set_fast_decode },
 
   // Getters
