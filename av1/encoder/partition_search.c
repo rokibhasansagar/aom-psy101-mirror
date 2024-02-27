@@ -626,6 +626,15 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
     av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
   }
+  else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM_VMAF_RD) {
+    int ssim_rdmult = x->rdmult;
+    av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                        &ssim_rdmult);
+    int vmaf_rdmult = x->rdmult;
+    av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &vmaf_rdmult);
+    x->rdmult = (int) ((int64_t)ssim_rdmult * 2 / 5 +
+                       (int64_t)vmaf_rdmult * 3 / 5);
+  }
 #endif
 #if CONFIG_TUNE_BUTTERAUGLI
   else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_BUTTERAUGLI) {

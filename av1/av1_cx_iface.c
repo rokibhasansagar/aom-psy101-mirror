@@ -855,7 +855,8 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 
 #if !CONFIG_TUNE_VMAF
   if ((extra_cfg->tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-      extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+       extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+      extra_cfg->tuning == AOM_TUNE_SSIM_VMAF_RD ||
       extra_cfg->vmaf_quantization == 1 ||
       extra_cfg->vmaf_preprocessing >= 1) {
     ERROR(
@@ -864,7 +865,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   }
 #endif
 
-  RANGE_CHECK(extra_cfg, tuning, AOM_TUNE_PSNR, AOM_TUNE_VMAF_SALIENCY_MAP);
+  RANGE_CHECK(extra_cfg, tuning, AOM_TUNE_PSNR, AOM_TUNE_SSIM_VMAF_RD);
 
   RANGE_CHECK(extra_cfg, dist_metric, AOM_DIST_METRIC_PSNR,
               AOM_DIST_METRIC_QM_PSNR);
@@ -3114,7 +3115,8 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
 
 #if CONFIG_TUNE_VMAF
   if ((ctx->extra_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-      ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+       ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN)||
+      ctx->extra_cfg.tuning == AOM_TUNE_SSIM_VMAF_RD ||
       ctx->extra_cfg.vmaf_quantization == 1 ||
       ctx->extra_cfg.vmaf_preprocessing >= 1) {
     aom_init_vmaf_model(&ppi->cpi->vmaf_info.vmaf_model,
