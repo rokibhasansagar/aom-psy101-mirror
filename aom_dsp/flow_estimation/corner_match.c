@@ -253,8 +253,8 @@ finished:
 
 bool av1_compute_global_motion_feature_match(
     TransformationType type, YV12_BUFFER_CONFIG *src, YV12_BUFFER_CONFIG *ref,
-    int bit_depth, MotionModel *motion_models, int num_motion_models,
-    bool *mem_alloc_failed) {
+    int bit_depth, int downsample_level, MotionModel *motion_models,
+    int num_motion_models, bool *mem_alloc_failed) {
   int num_correspondences;
   Correspondence *correspondences;
   ImagePyramid *src_pyramid = src->y_pyramid;
@@ -263,19 +263,19 @@ bool av1_compute_global_motion_feature_match(
   CornerList *ref_corners = ref->corners;
 
   // Precompute information we will need about each frame
-  if (!aom_compute_pyramid(src, bit_depth, src_pyramid)) {
+  if (aom_compute_pyramid(src, bit_depth, 1, src_pyramid) < 0) {
     *mem_alloc_failed = true;
     return false;
   }
-  if (!av1_compute_corner_list(src_pyramid, src_corners)) {
+  if (!av1_compute_corner_list(src, bit_depth, downsample_level, src_corners)) {
     *mem_alloc_failed = true;
     return false;
   }
-  if (!aom_compute_pyramid(ref, bit_depth, ref_pyramid)) {
+  if (aom_compute_pyramid(ref, bit_depth, 1, ref_pyramid) < 0) {
     *mem_alloc_failed = true;
     return false;
   }
-  if (!av1_compute_corner_list(ref_pyramid, ref_corners)) {
+  if (!av1_compute_corner_list(src, bit_depth, downsample_level, ref_corners)) {
     *mem_alloc_failed = true;
     return false;
   }

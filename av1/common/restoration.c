@@ -17,6 +17,7 @@
 #include "config/aom_scale_rtcd.h"
 
 #include "aom_mem/aom_mem.h"
+#include "aom_util/aom_pthread.h"
 #include "av1/common/av1_common_int.h"
 #include "av1/common/resize.h"
 #include "av1/common/restoration.h"
@@ -1074,7 +1075,8 @@ void av1_loop_restoration_filter_frame_init(AV1LrStruct *lr_ctxt,
   if (aom_realloc_frame_buffer(
           lr_ctxt->dst, frame_width, frame_height, seq_params->subsampling_x,
           seq_params->subsampling_y, highbd, AOM_RESTORATION_FRAME_BORDER,
-          cm->features.byte_alignment, NULL, NULL, NULL, 0, 0) != AOM_CODEC_OK)
+          cm->features.byte_alignment, NULL, NULL, NULL, false,
+          0) != AOM_CODEC_OK)
     aom_internal_error(cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate restoration dst buffer");
 
