@@ -732,5 +732,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .ssim_rd_mult = ARG_DEF(NULL, "ssim-rd-mult", 1,
               "Multiplier for SSIM rdmult "
               "(only active with tune ssim, defaults to 100)"),
+  .luma_bias = ARG_DEF(NULL, "luma-bias", 1,
+                       "Apply luma RD bias to increase perceptual consistency "
+                       "(0..15), default is 0"),
 #endif  // CONFIG_AV1_ENCODER
 };

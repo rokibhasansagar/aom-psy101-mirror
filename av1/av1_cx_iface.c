@@ -203,6 +203,7 @@ struct av1_extracfg {
   int kf_max_pyr_height;
   int sb_qp_sweep;
   int ssim_rd_mult;
+  unsigned int luma_bias;
   int vmaf_quantization;
   int vmaf_preprocessing;
   int vmaf_motion_mult;
@@ -374,6 +375,7 @@ static const struct av1_extracfg default_extra_cfg = {
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
   100,             // ssim_rd_mult
+  0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
@@ -531,6 +533,7 @@ static const struct av1_extracfg default_extra_cfg = {
   -1,              // kf_max_pyr_height
   0,               // sb_qp_sweep
   100,             // ssim_rd_mult
+  0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
   100,             // vmaf_motion_mult
@@ -923,6 +926,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   }
 
   RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
+  RANGE_CHECK_HI(extra_cfg, luma_bias, 15);
 
 #if CONFIG_TUNE_VMAF
   RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
@@ -1550,6 +1554,8 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   oxcf->sb_qp_sweep = extra_cfg->sb_qp_sweep;
 
   oxcf->ssim_rd_mult = extra_cfg->ssim_rd_mult;
+
+  oxcf->luma_bias = extra_cfg->luma_bias;
 
 #if CONFIG_TUNE_VMAF
   oxcf->vmaf_quantization = extra_cfg->vmaf_quantization;
@@ -4325,6 +4331,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_rd_mult,
                               argv, err_string)) {
     extra_cfg.ssim_rd_mult = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.luma_bias,
+                              argv, err_string)) {
+    extra_cfg.luma_bias = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.fast_decode,
                               argv, err_string)) {
     extra_cfg.fast_decode = arg_parse_int_helper(&arg, err_string);
@@ -4391,6 +4400,13 @@ static aom_codec_err_t ctrl_set_ssim_rd_mult(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   extra_cfg.ssim_rd_mult = CAST(AOME_SET_SSIM_RD_MULT, args);
+  return update_extra_cfg(ctx, &extra_cfg);
+}
+
+static aom_codec_err_t ctrl_set_luma_bias(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.luma_bias = CAST(AOME_SET_LUMA_BIAS, args);
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -4576,6 +4592,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, ctrl_set_max_consec_frame_drop_cbr },
   { AV1E_SET_SVC_FRAME_DROP_MODE, ctrl_set_svc_frame_drop_mode },
   { AOME_SET_SSIM_RD_MULT, ctrl_set_ssim_rd_mult },
+  { AOME_SET_LUMA_BIAS, ctrl_set_luma_bias },
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
   { AOME_SET_VMAF_MOTION_MULT, ctrl_set_vmaf_motion_mult },

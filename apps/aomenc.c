@@ -247,6 +247,7 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_ENABLE_RATE_GUIDE_DELTAQ,
                                         AV1E_SET_RATE_DISTRIBUTION_INFO,
                                         AOME_SET_SSIM_RD_MULT,
+                                        AOME_SET_LUMA_BIAS,
                                         AOME_SET_FAST_DECODE,
                                         0 };
 
@@ -459,6 +460,7 @@ const arg_def_t *av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.loopfilter_control,
   &g_av1_codec_arg_defs.auto_intra_tools_off,
   &g_av1_codec_arg_defs.ssim_rd_mult,
+  &g_av1_codec_arg_defs.luma_bias,
   &g_av1_codec_arg_defs.fast_decode,
   NULL,
 };

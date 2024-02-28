@@ -1060,48 +1060,6 @@ int av1_get_q_for_deltaq_objective(AV1_COMP *const cpi, ThreadData *td,
   }
   return qindex;
 }
-
-#if !DISABLE_HDR_LUMA_DELTAQ
-// offset table defined in Table3 of T-REC-H.Sup15 document.
-static const int hdr_thres[HDR_QP_LEVELS + 1] = { 0,   301, 367, 434, 501, 567,
-                                                  634, 701, 767, 834, 1024 };
-
-static const int hdr10_qp_offset[HDR_QP_LEVELS] = { 3,  2,  1,  0,  -1,
-                                                    -2, -3, -4, -5, -6 };
-#endif
-
-int av1_get_q_for_hdr(AV1_COMP *const cpi, MACROBLOCK *const x,
-                      BLOCK_SIZE bsize, int mi_row, int mi_col) {
-  AV1_COMMON *const cm = &cpi->common;
-
-#if DISABLE_HDR_LUMA_DELTAQ
-  (void)x;
-  (void)bsize;
-  (void)mi_row;
-  (void)mi_col;
-  return cm->quant_params.base_qindex;
-#else
-  // calculate pixel average
-  const int block_luma_avg = av1_log_block_avg(cpi, x, bsize, mi_row, mi_col);
-  // adjust offset based on average of the pixel block
-  int offset = 0;
-  for (int i = 0; i < HDR_QP_LEVELS; i++) {
-    if (block_luma_avg >= hdr_thres[i] && block_luma_avg < hdr_thres[i + 1]) {
-      offset = (int)(hdr10_qp_offset[i] * QP_SCALE_FACTOR);
-      break;
-    }
-  }
-
-  const DeltaQInfo *const delta_q_info = &cm->delta_q_info;
-  offset = AOMMIN(offset, delta_q_info->delta_q_res * 9 - 1);
-  offset = AOMMAX(offset, -delta_q_info->delta_q_res * 9 + 1);
-  int qindex = cm->quant_params.base_qindex + offset;
-  qindex = AOMMIN(qindex, MAXQ);
-  qindex = AOMMAX(qindex, MINQ);
-
-  return qindex;
-#endif
-}
 #endif  // !CONFIG_REALTIME_ONLY
 
 void av1_reset_simple_motion_tree_partition(SIMPLE_MOTION_DATA_TREE *sms_tree,

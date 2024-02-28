@@ -646,6 +646,42 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
     x->rdmult = (int)(((int64_t)x->rdmult * x->intra_sb_rdmult_modifier) >> 7);
   }
 
+  if (cpi->oxcf.luma_bias != 0) {
+    int luma_avg;
+    BitDepthInfo bd_info = get_bit_depth_info(&x->e_mbd);
+    if (bd_info.use_highbitdepth_buf) {
+      // We bitshift if the bitdepth is > 8 to normalize the results to 0-255
+      luma_avg = av1_log_block_avg_hbd(x, bsize) >> (bd_info.bit_depth - 8);
+    } else {
+      luma_avg = av1_log_block_avg(x, bsize);
+    }
+
+    double M1 = 2610.0 / 4096.0 / 4.0;
+    double M2 = 2523.0 / 4096.0 * 128.0;
+    double C1 = 3424.0 / 4096.0;
+    double C2 = 2413.0 / 4096.0 * 32.0;
+    double C3 = 2392.0 / 4096.0 * 32.0;
+
+    double peak = 250;
+    double gamma = 2.4;
+    double a = pow(peak / 10000.0, M1);
+    double pq_factor = 1.0 / pow((C1 + C2 * a) / (1 + C3 * a), M2);
+
+    double luma_avg_rel = luma_avg / 255;
+    if (luma_avg_rel < pow(0.0001 / peak, 1.0 / gamma))
+      luma_avg_rel = pow(0.0001 / peak, 1.0 / gamma);
+
+    double b = pow(10000, M1);
+    double c = pow(peak * pow(luma_avg_rel, gamma), M1);
+    double d = C3 * c + b;
+    double luma_adjustment =
+        1 /
+        (b * M1 * M2 * pq_factor * gamma * (C2 - C1 * C3) * c *
+         pow((C1 * b + C2 * c) / d, M2 - 1) / (luma_avg_rel * pow(d, 2))) *
+        (double)cpi->oxcf.luma_bias / 8;
+    x->rdmult = (int)((double)x->rdmult * luma_adjustment);
+  }
+
   // Check to make sure that the adjustments above have not caused the
   // rd multiplier to be truncated to 0.
   x->rdmult = (x->rdmult > 0) ? x->rdmult : 1;
