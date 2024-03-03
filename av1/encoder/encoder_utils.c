@@ -807,7 +807,8 @@ void av1_scale_references(AV1_COMP *cpi, const InterpFilter filter,
 
 BLOCK_SIZE av1_select_sb_size(const AV1EncoderConfig *const oxcf, int width,
                               int height, int number_spatial_layers) {
-  if (oxcf->tool_cfg.superblock_size == AOM_SUPERBLOCK_SIZE_64X64) {
+  if (oxcf->tool_cfg.superblock_size == AOM_SUPERBLOCK_SIZE_64X64 ||
+      oxcf->tune_cfg.content == AOM_CONTENT_PSY101) {
     return BLOCK_64X64;
   }
   if (oxcf->tool_cfg.superblock_size == AOM_SUPERBLOCK_SIZE_128X128) {
