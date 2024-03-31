@@ -81,7 +81,7 @@ forward_decls qw/av1_common_forward_decls/;
 # For normal use, we require SSE4.1. However, 32-bit Valgrind does not support
 # SSE4.1, so we include fallbacks for some critical functions to improve
 # performance
-$ssse3_x86 = '';
+$sse2_x86 = $ssse3_x86 = '';
 if ($opts{arch} eq "x86") {
   $sse2_x86 = 'sse2';
   $ssse3_x86 = 'ssse3';
@@ -606,11 +606,11 @@ if(aom_config("CONFIG_AV1_HIGHBITDEPTH") eq "yes") {
   specialize qw/av1_dist_wtd_convolve_x sse2 avx2 neon neon_dotprod neon_i8mm/;
   specialize qw/av1_dist_wtd_convolve_y sse2 avx2 neon/;
   if(aom_config("CONFIG_AV1_HIGHBITDEPTH") eq "yes") {
-    specialize qw/av1_highbd_dist_wtd_convolve_2d sse4_1 avx2 neon/;
-    specialize qw/av1_highbd_dist_wtd_convolve_x sse4_1 avx2 neon/;
-    specialize qw/av1_highbd_dist_wtd_convolve_y sse4_1 avx2 neon/;
+    specialize qw/av1_highbd_dist_wtd_convolve_2d sse4_1 avx2 neon sve2/;
+    specialize qw/av1_highbd_dist_wtd_convolve_x sse4_1 avx2 neon sve2/;
+    specialize qw/av1_highbd_dist_wtd_convolve_y sse4_1 avx2 neon sve2/;
     specialize qw/av1_highbd_dist_wtd_convolve_2d_copy sse4_1 avx2 neon/;
-    specialize qw/av1_highbd_convolve_2d_sr ssse3 avx2 neon/;
+    specialize qw/av1_highbd_convolve_2d_sr ssse3 avx2 neon sve2/;
     specialize qw/av1_highbd_convolve_2d_sr_intrabc neon/;
     specialize qw/av1_highbd_convolve_x_sr ssse3 avx2 neon sve2/;
     specialize qw/av1_highbd_convolve_x_sr_intrabc neon/;
