@@ -1097,8 +1097,6 @@ typedef struct AV1EncoderConfig {
   int vmaf_preprocessing;
   bool override_preprocessing;
 
-  int vmaf_motion_mult;
-
   BLOCK_SIZE vmaf_rd_bsize;
   unsigned int vmaf_rd_resize_factor;
 

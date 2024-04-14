@@ -800,75 +800,6 @@ static AOM_INLINE double image_sad_c(const uint8_t *src, int src_stride,
   return accum / (double)(h * w);
 }
 
-static double calc_vmaf_motion_score(const AV1_COMP *const cpi,
-                                     const AV1_COMMON *const cm,
-                                     const YV12_BUFFER_CONFIG *const cur,
-                                     const YV12_BUFFER_CONFIG *const last,
-                                     const YV12_BUFFER_CONFIG *const next) {
-  const int y_width = cur->y_width;
-  const int y_height = cur->y_height;
-  YV12_BUFFER_CONFIG blurred_cur, blurred_last, blurred_next;
-  const int bit_depth = cpi->td.mb.e_mbd.bd;
-  const int ss_x = cur->subsampling_x;
-  const int ss_y = cur->subsampling_y;
-
-  memset(&blurred_cur, 0, sizeof(blurred_cur));
-  memset(&blurred_last, 0, sizeof(blurred_last));
-  memset(&blurred_next, 0, sizeof(blurred_next));
-
-  aom_alloc_frame_buffer(&blurred_cur, y_width, y_height, ss_x, ss_y,
-                         cm->seq_params->use_highbitdepth,
-                         cpi->oxcf.border_in_pixels,
-                         cm->features.byte_alignment, false, 0);
-  aom_alloc_frame_buffer(&blurred_last, y_width, y_height, ss_x, ss_y,
-                         cm->seq_params->use_highbitdepth,
-                         cpi->oxcf.border_in_pixels,
-                         cm->features.byte_alignment, false, 0);
-  aom_alloc_frame_buffer(&blurred_next, y_width, y_height, ss_x, ss_y,
-                         cm->seq_params->use_highbitdepth,
-                         cpi->oxcf.border_in_pixels,
-                         cm->features.byte_alignment, false, 0);
-
-  gaussian_blur(bit_depth, cur, &blurred_cur);
-  gaussian_blur(bit_depth, last, &blurred_last);
-  if (next) gaussian_blur(bit_depth, next, &blurred_next);
-
-  double motion1, motion2 = 65536.0;
-  if (cm->seq_params->use_highbitdepth) {
-    assert(blurred_cur.flags & YV12_FLAG_HIGHBITDEPTH);
-    assert(blurred_last.flags & YV12_FLAG_HIGHBITDEPTH);
-    const float scale_factor = 1.0f / (float)(1 << (bit_depth - 8));
-    motion1 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
-                                 blurred_cur.y_stride,
-                                 CONVERT_TO_SHORTPTR(blurred_last.y_buffer),
-                                 blurred_last.y_stride, y_width, y_height) *
-              scale_factor;
-    if (next) {
-      assert(blurred_next.flags & YV12_FLAG_HIGHBITDEPTH);
-      motion2 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
-                                   blurred_cur.y_stride,
-                                   CONVERT_TO_SHORTPTR(blurred_next.y_buffer),
-                                   blurred_next.y_stride, y_width, y_height) *
-                scale_factor;
-    }
-  } else {
-    motion1 = image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
-                          blurred_last.y_buffer, blurred_last.y_stride, y_width,
-                          y_height);
-    if (next) {
-      motion2 = image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
-                            blurred_next.y_buffer, blurred_next.y_stride,
-                            y_width, y_height);
-    }
-  }
-
-  aom_free_frame_buffer(&blurred_cur);
-  aom_free_frame_buffer(&blurred_last);
-  aom_free_frame_buffer(&blurred_next);
-
-  return AOMMIN(motion1, motion2);
-}
-
 static AOM_INLINE void get_neighbor_frames(const AV1_COMP *const cpi,
                                            const YV12_BUFFER_CONFIG **last,
                                            const YV12_BUFFER_CONFIG **next) {
@@ -884,9 +815,6 @@ static AOM_INLINE void get_neighbor_frames(const AV1_COMP *const cpi,
   *last = cm->show_frame ? cpi->last_source : &last_entry->img;
 }
 
-// Calculates the new qindex from the VMAF motion score. This is based on the
-// observation: when the motion score becomes higher, the VMAF score of the
-// same source and distorted frames would become higher.
 int av1_get_vmaf_base_qindex(const AV1_COMP *const cpi, int current_qindex) {
   const AV1_COMMON *const cm = &cpi->common;
   if (cm->current_frame.frame_number == 0 || cpi->oxcf.pass == 1) {
@@ -909,31 +837,8 @@ int av1_get_vmaf_base_qindex(const AV1_COMP *const cpi, int current_qindex) {
   if (approx_sse < sse_threshold || approx_dvmaf < vmaf_threshold) {
     return current_qindex;
   }
-  const YV12_BUFFER_CONFIG *cur_buf = cpi->source;
-  if (cm->show_frame == 0) {
-    const int src_index = gf_group->arf_src_offset[cpi->gf_frame_index];
-    struct lookahead_entry *cur_entry = av1_lookahead_peek(
-        cpi->ppi->lookahead, src_index, cpi->compressor_stage);
-    cur_buf = &cur_entry->img;
-  }
-  assert(cur_buf);
 
-  const YV12_BUFFER_CONFIG *next_buf, *last_buf;
-  get_neighbor_frames(cpi, &last_buf, &next_buf);
-  assert(last_buf);
-
-  const double motion =
-      calc_vmaf_motion_score(cpi, cm, cur_buf, last_buf, next_buf);
-
-  // Get dVMAF through a data fitted model.
-  const double dvmaf = 26.11 * (1.0 - exp(-0.06 * motion));
-  const double dsse = dvmaf * approx_sse / approx_dvmaf * cpi->oxcf.vmaf_motion_mult / 100.0;
-
-  // Clamping beta to address VQ issue (aomedia:3170).
-  const double beta = AOMMAX(approx_sse / (dsse + approx_sse), 0.5);
-  const int offset =
-      av1_get_deltaq_offset(cm->seq_params->bit_depth, current_qindex, beta);
-  int qindex = current_qindex + offset;
+  int qindex = current_qindex;
 
   qindex = AOMMIN(qindex, MAXQ);
   qindex = AOMMAX(qindex, MINQ);

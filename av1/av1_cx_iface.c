@@ -212,7 +212,6 @@ struct av1_extracfg {
   unsigned int luma_bias;
   int vmaf_quantization;
   int vmaf_preprocessing;
-  int vmaf_motion_mult;
   unsigned int vmaf_rd_resize_factor;
   int fast_decode;
 };
@@ -384,7 +383,6 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
-  100,             // vmaf_motion_mult
   1,               // vmaf_rd_resize_factor
   0,               // fast_decode
 };
@@ -542,7 +540,6 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
-  100,             // vmaf_motion_mult
   1,               // vmaf_rd_resize_factor
   0,               // fast_decode
 };
@@ -937,7 +934,6 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 #if CONFIG_TUNE_VMAF
   RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
   RANGE_CHECK(extra_cfg, vmaf_preprocessing, 0, 3);
-  RANGE_CHECK(extra_cfg, vmaf_motion_mult, 0, 1000);
   RANGE_CHECK_HI(extra_cfg, vmaf_rd_resize_factor, 3);
 #endif
 
@@ -3996,9 +3992,6 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_preprocessing,
                               argv, err_string)) {
     extra_cfg.vmaf_preprocessing = arg_parse_int_helper(&arg, err_string);
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_motion_mult,
-                              argv, err_string)) {
-    extra_cfg.vmaf_motion_mult = arg_parse_int_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_rd_resize_factor,
                               argv, err_string)) {
     extra_cfg.vmaf_rd_resize_factor = arg_parse_int_helper(&arg, err_string);
@@ -4460,13 +4453,6 @@ static aom_codec_err_t ctrl_set_vmaf_preprocessing(aom_codec_alg_priv_t *ctx,
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
-static aom_codec_err_t ctrl_set_vmaf_motion_mult(aom_codec_alg_priv_t *ctx,
-                                          va_list args) {
-  struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.vmaf_motion_mult = CAST(AOME_SET_VMAF_MOTION_MULT, args);
-  return update_extra_cfg(ctx, &extra_cfg);
-}
-
 static aom_codec_err_t ctrl_set_vmaf_rd_resize_factor(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
@@ -4631,7 +4617,6 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AOME_SET_LUMA_BIAS, ctrl_set_luma_bias },
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
-  { AOME_SET_VMAF_MOTION_MULT, ctrl_set_vmaf_motion_mult },
   { AOME_SET_VMAF_RD_RESIZE_FACTOR, ctrl_set_vmaf_rd_resize_factor },
   { AOME_SET_FAST_DECODE, ctrl_set_fast_decode },
 

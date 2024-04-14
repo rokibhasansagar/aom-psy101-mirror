@@ -513,9 +513,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                 "                                        0 - Off, "
                                 "1 - VMAF Block-based NEG, 2 - VMAF Block-based, "
                                 "3 - VMAF Frame-based"),
-  .vmaf_motion_mult = ARG_DEF(NULL, "vmaf-motion-mult", 1,
-                              "Multiplier for VMAF motion compensation "
-                              "(only active with VMAF tunes, defaults to 100)"),
   .vmaf_rd_resize_factor = ARG_DEF(NULL, "vmaf-rd-resize-factor", 1,
                                    "Change internal resizing for VMAF RD "
                                    "calculations\n "
