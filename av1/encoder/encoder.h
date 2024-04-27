@@ -1097,9 +1097,6 @@ typedef struct AV1EncoderConfig {
   int vmaf_preprocessing;
   bool override_preprocessing;
 
-  BLOCK_SIZE vmaf_rd_bsize;
-  unsigned int vmaf_rd_resize_factor;
-
   int fast_decode;
   /*!\endcond */
 } AV1EncoderConfig;

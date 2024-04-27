@@ -513,12 +513,6 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                 "                                        0 - Off, "
                                 "1 - VMAF Block-based NEG, 2 - VMAF Block-based, "
                                 "3 - VMAF Frame-based"),
-  .vmaf_rd_resize_factor = ARG_DEF(NULL, "vmaf-rd-resize-factor", 1,
-                                   "Change internal resizing for VMAF RD "
-                                   "calculations\n "
-                                   "                                        "
-                                   "0 - Full res, 1 - Half res (Default), "
-                                   "2 - Quarter res, 3 - Eighth res."),
 #endif
   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
                                  "Partition information read and write path"),
