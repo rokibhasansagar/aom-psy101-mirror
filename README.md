@@ -116,6 +116,6 @@ Other more miscalleneous discussions, contributions, and talks will be done else
 ## Bug reports
 
 Bug reports can be filed in the Alliance for Open Media for general aomenc bugs
-[issue tracker](https://bugs.chromium.org/p/aomedia/issues/list).
+[issue tracker](https://aomedia.issues.chromium.org/).
 
 As for the ones related to this fork itself, the issues tab can be used here on GitLab.

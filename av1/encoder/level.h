@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2019, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -166,7 +166,7 @@ typedef struct AV1LevelParams {
   AV1LevelInfo *level_info[MAX_NUM_OPERATING_POINTS];
 } AV1LevelParams;
 
-static INLINE int is_in_operating_point(int operating_point,
+static inline int is_in_operating_point(int operating_point,
                                         int temporal_layer_id,
                                         int spatial_layer_id) {
   if (!operating_point) return 1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2019, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -44,7 +44,7 @@
 
 #define TEMPORAL_FILTER_KEY_FRAME (CONFIG_REALTIME_ONLY ? 0 : 1)
 
-static INLINE void set_refresh_frame_flags(
+static inline void set_refresh_frame_flags(
     RefreshFrameInfo *const refresh_frame, bool refresh_gf, bool refresh_bwdref,
     bool refresh_arf) {
   refresh_frame->golden_frame = refresh_gf;

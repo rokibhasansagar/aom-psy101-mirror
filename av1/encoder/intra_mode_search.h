@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2020, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -286,7 +286,7 @@ void av1_count_colors_highbd(const uint8_t *src8, int stride, int rows,
 
 /*! \brief Initializes the \ref IntraModeSearchState struct.
  */
-static AOM_INLINE void init_intra_mode_search_state(
+static inline void init_intra_mode_search_state(
     IntraModeSearchState *intra_search_state) {
   memset(intra_search_state, 0, sizeof(*intra_search_state));
   intra_search_state->rate_uv_intra = INT_MAX;

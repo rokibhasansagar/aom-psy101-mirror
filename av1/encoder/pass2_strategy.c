@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2019, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -18,8 +18,10 @@
 /*! @} - end defgroup gf_group_algo */
 
 #include <assert.h>
+#include <limits.h>
 #include <stdint.h>
 
+#include "aom_dsp/aom_dsp_common.h"
 #include "aom_mem/aom_mem.h"
 #include "config/aom_config.h"
 #include "config/aom_scale_rtcd.h"
@@ -268,9 +270,12 @@ static double calc_correction_factor(double err_per_mb, int q) {
 
 // Similar to find_qindex_by_rate() function in ratectrl.c, but includes
 // calculation of a correction_factor.
-static int find_qindex_by_rate_with_correction(
-    int desired_bits_per_mb, aom_bit_depth_t bit_depth, double error_per_mb,
-    double group_weight_factor, int best_qindex, int worst_qindex) {
+static int find_qindex_by_rate_with_correction(uint64_t desired_bits_per_mb,
+                                               aom_bit_depth_t bit_depth,
+                                               double error_per_mb,
+                                               double group_weight_factor,
+                                               int best_qindex,
+                                               int worst_qindex) {
   assert(best_qindex <= worst_qindex);
   int low = best_qindex;
   int high = worst_qindex;
@@ -279,7 +284,8 @@ static int find_qindex_by_rate_with_correction(
     const int mid = (low + high) >> 1;
     const double q_factor = calc_correction_factor(error_per_mb, mid);
     const double q = av1_convert_qindex_to_q(mid, bit_depth);
-    const int mid_bits_per_mb = (int)((q_factor * group_weight_factor) / q);
+    const uint64_t mid_bits_per_mb =
+        (uint64_t)((q_factor * group_weight_factor) / q);
 
     if (mid_bits_per_mb > desired_bits_per_mb) {
       low = mid + 1;
@@ -328,8 +334,8 @@ static int get_twopass_worst_quality(AV1_COMP *cpi, const double av_frame_err,
                             : cpi->common.mi_params.MBs;
     const int active_mbs = AOMMAX(1, num_mbs - (int)(num_mbs * inactive_zone));
     const double av_err_per_mb = av_frame_err / (1.0 - inactive_zone);
-    const int target_norm_bits_per_mb =
-        (int)((uint64_t)av_target_bandwidth << BPER_MB_NORMBITS) / active_mbs;
+    const uint64_t target_norm_bits_per_mb =
+        ((uint64_t)av_target_bandwidth << BPER_MB_NORMBITS) / active_mbs;
     int rate_err_tol = AOMMIN(rc_cfg->under_shoot_pct, rc_cfg->over_shoot_pct);
 
     // Update bpm correction factor based on previous GOP rate error.
@@ -940,7 +946,10 @@ static void allocate_gf_group_bits(GF_GROUP *gf_group,
       case ARF_UPDATE:
       case INTNL_ARF_UPDATE:
         arf_extra_bits = layer_extra_bits[gf_group->layer_depth[idx]];
-        gf_group->bit_allocation[idx] = base_frame_bits + arf_extra_bits;
+        gf_group->bit_allocation[idx] =
+            (base_frame_bits > INT_MAX - arf_extra_bits)
+                ? INT_MAX
+                : (base_frame_bits + arf_extra_bits);
         break;
       case INTNL_OVERLAY_UPDATE:
       case OVERLAY_UPDATE: gf_group->bit_allocation[idx] = 0; break;
@@ -958,7 +967,7 @@ static void allocate_gf_group_bits(GF_GROUP *gf_group,
 }
 
 // Returns true if KF group and GF group both are almost completely static.
-static INLINE int is_almost_static(double gf_zero_motion, int kf_zero_motion,
+static inline int is_almost_static(double gf_zero_motion, int kf_zero_motion,
                                    int is_lap_enabled) {
   if (is_lap_enabled) {
     /*
@@ -973,7 +982,7 @@ static INLINE int is_almost_static(double gf_zero_motion, int kf_zero_motion,
 }
 
 #define ARF_ABS_ZOOM_THRESH 4.4
-static INLINE int detect_gf_cut(AV1_COMP *cpi, int frame_index, int cur_start,
+static inline int detect_gf_cut(AV1_COMP *cpi, int frame_index, int cur_start,
                                 int flash_detected, int active_max_gf_interval,
                                 int active_min_gf_interval,
                                 GF_GROUP_STATS *gf_stats) {
@@ -2210,7 +2219,7 @@ static void define_gf_group_pass0(AV1_COMP *cpi) {
   }
 }
 
-static INLINE void set_baseline_gf_interval(PRIMARY_RATE_CONTROL *p_rc,
+static inline void set_baseline_gf_interval(PRIMARY_RATE_CONTROL *p_rc,
                                             int arf_position) {
   p_rc->baseline_gf_interval = arf_position;
 }
@@ -3030,8 +3039,8 @@ static int64_t get_kf_group_bits(AV1_COMP *cpi, double kf_group_err,
       double vbr_corpus_complexity_lap =
           cpi->oxcf.rc_cfg.vbr_corpus_complexity_lap / 10.0;
       /* Get the average corpus complexity of the frame */
-      kf_group_bits = (int64_t)(
-          kf_group_bits * (kf_group_avg_error / vbr_corpus_complexity_lap));
+      kf_group_bits = (int64_t)(kf_group_bits * (kf_group_avg_error /
+                                                 vbr_corpus_complexity_lap));
     }
   } else {
     kf_group_bits = (int64_t)(twopass->bits_left *
@@ -3397,17 +3406,19 @@ static int get_section_target_bandwidth(AV1_COMP *cpi) {
   CurrentFrame *const current_frame = &cm->current_frame;
   RATE_CONTROL *const rc = &cpi->rc;
   TWO_PASS *const twopass = &cpi->ppi->twopass;
-  int section_target_bandwidth;
+  int64_t section_target_bandwidth;
   const int frames_left = (int)(twopass->stats_buf_ctx->total_stats->count -
                                 current_frame->frame_number);
   if (cpi->ppi->lap_enabled)
-    section_target_bandwidth = (int)rc->avg_frame_bandwidth;
-  else
-    section_target_bandwidth = (int)(twopass->bits_left / frames_left);
-  return section_target_bandwidth;
+    section_target_bandwidth = rc->avg_frame_bandwidth;
+  else {
+    section_target_bandwidth = twopass->bits_left / frames_left;
+    section_target_bandwidth = AOMMIN(section_target_bandwidth, INT_MAX);
+  }
+  return (int)section_target_bandwidth;
 }
 
-static INLINE void set_twopass_params_based_on_fp_stats(
+static inline void set_twopass_params_based_on_fp_stats(
     AV1_COMP *cpi, const FIRSTPASS_STATS *this_frame_ptr) {
   if (this_frame_ptr == NULL) return;
 
@@ -4128,7 +4139,12 @@ void av1_twopass_postencode_update(AV1_COMP *cpi) {
   }
 
   // Target vs actual bits for this arf group.
-  twopass->rolling_arf_group_target_bits += rc->base_frame_target;
+  if (twopass->rolling_arf_group_target_bits >
+      INT_MAX - rc->base_frame_target) {
+    twopass->rolling_arf_group_target_bits = INT_MAX;
+  } else {
+    twopass->rolling_arf_group_target_bits += rc->base_frame_target;
+  }
   twopass->rolling_arf_group_actual_bits += rc->projected_frame_size;
 
   // Calculate the pct rc error.
@@ -4264,8 +4280,9 @@ void av1_twopass_postencode_update(AV1_COMP *cpi) {
       if (rc->projected_frame_size < fast_extra_thresh) {
         p_rc->vbr_bits_off_target_fast +=
             fast_extra_thresh - rc->projected_frame_size;
-        p_rc->vbr_bits_off_target_fast = AOMMIN(p_rc->vbr_bits_off_target_fast,
-                                                (4 * rc->avg_frame_bandwidth));
+        p_rc->vbr_bits_off_target_fast =
+            AOMMIN(p_rc->vbr_bits_off_target_fast,
+                   (4 * (int64_t)rc->avg_frame_bandwidth));
       }
     }
 

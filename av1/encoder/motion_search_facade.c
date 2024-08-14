@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2020, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -45,7 +45,7 @@ static int use_fine_search_interval(const AV1_COMP *const cpi) {
 }
 
 // Iterate through the tpl and collect the mvs to be used as candidates
-static INLINE void get_mv_candidate_from_tpl(const AV1_COMP *const cpi,
+static inline void get_mv_candidate_from_tpl(const AV1_COMP *const cpi,
                                              const MACROBLOCK *x,
                                              BLOCK_SIZE bsize, int ref,
                                              cand_mv_t *cand, int *cand_count,
@@ -842,10 +842,9 @@ int av1_compound_single_motion_search(const AV1_COMP *cpi, MACROBLOCK *x,
   return bestsme;
 }
 
-static AOM_INLINE void build_second_inter_pred(const AV1_COMP *cpi,
-                                               MACROBLOCK *x, BLOCK_SIZE bsize,
-                                               const MV *other_mv, int ref_idx,
-                                               uint8_t *second_pred) {
+static inline void build_second_inter_pred(const AV1_COMP *cpi, MACROBLOCK *x,
+                                           BLOCK_SIZE bsize, const MV *other_mv,
+                                           int ref_idx, uint8_t *second_pred) {
   const AV1_COMMON *const cm = &cpi->common;
   const int pw = block_size_wide[bsize];
   const int ph = block_size_high[bsize];
@@ -904,7 +903,7 @@ int av1_compound_single_motion_search_interinter(
                                            mask, mask_stride, rate_mv, ref_idx);
 }
 
-static AOM_INLINE void do_masked_motion_search_indexed(
+static inline void do_masked_motion_search_indexed(
     const AV1_COMP *const cpi, MACROBLOCK *x, const int_mv *const cur_mv,
     const INTERINTER_COMPOUND_DATA *const comp_data, BLOCK_SIZE bsize,
     int_mv *tmp_mv, int *rate_mv, int which) {

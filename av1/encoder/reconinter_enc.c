@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2016, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -28,7 +28,7 @@
 #include "av1/common/reconintra.h"
 #include "av1/encoder/reconinter_enc.h"
 
-static AOM_INLINE void enc_calc_subpel_params(
+static inline void enc_calc_subpel_params(
     const MV *const src_mv, InterPredParams *const inter_pred_params,
     uint8_t **pre, SubpelParams *subpel_params, int *src_stride) {
   struct buf_2d *pre_buf = &inter_pred_params->ref_frame_buf;
@@ -165,7 +165,7 @@ static void setup_address_for_obmc(MACROBLOCKD *xd, int mi_row_offset,
                        num_planes);
 }
 
-static INLINE void build_obmc_prediction(MACROBLOCKD *xd, int rel_mi_row,
+static inline void build_obmc_prediction(MACROBLOCKD *xd, int rel_mi_row,
                                          int rel_mi_col, uint8_t op_mi_size,
                                          int dir, MB_MODE_INFO *above_mbmi,
                                          void *fun_ctxt, const int num_planes) {

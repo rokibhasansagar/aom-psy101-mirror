@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2020, Alliance for Open Media. All rights reserved.
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
  * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
@@ -217,9 +217,9 @@ int av1_get_hier_tpl_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
 }
 #endif  // !CONFIG_REALTIME_ONLY
 
-static AOM_INLINE void update_filter_type_count(FRAME_COUNTS *counts,
-                                                const MACROBLOCKD *xd,
-                                                const MB_MODE_INFO *mbmi) {
+static inline void update_filter_type_count(FRAME_COUNTS *counts,
+                                            const MACROBLOCKD *xd,
+                                            const MB_MODE_INFO *mbmi) {
   int dir;
   for (dir = 0; dir < 2; ++dir) {
     const int ctx = av1_get_pred_context_switchable_interp(xd, dir);
@@ -233,7 +233,7 @@ static AOM_INLINE void update_filter_type_count(FRAME_COUNTS *counts,
 
 // This function will copy the best reference mode information from
 // MB_MODE_INFO_EXT_FRAME to MB_MODE_INFO_EXT.
-static INLINE void copy_mbmi_ext_frame_to_mbmi_ext(
+static inline void copy_mbmi_ext_frame_to_mbmi_ext(
     MB_MODE_INFO_EXT *mbmi_ext,
     const MB_MODE_INFO_EXT_FRAME *const mbmi_ext_best, uint8_t ref_frame_type) {
   memcpy(mbmi_ext->ref_mv_stack[ref_frame_type], mbmi_ext_best->ref_mv_stack,
