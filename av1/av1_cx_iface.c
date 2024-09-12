@@ -215,7 +215,8 @@ struct av1_extracfg {
   unsigned int luma_bias;
   int vmaf_quantization;
   int vmaf_preprocessing;
-  int ssim_vmaf_rd;
+  unsigned int vmaf_rd_resize;
+  unsigned int ssim_vmaf_rd;
   int fast_decode;
 };
 
@@ -386,6 +387,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
+  1,               // vmaf_rd_resize
   0,               // ssim_vmaf_rd
   0,               // fast_decode
 };
@@ -543,6 +545,7 @@ static const struct av1_extracfg default_extra_cfg = {
   0,               // luma_bias
   0,               // vmaf_quantization
   0,               // vmaf_preprocessing
+  1,               // vmaf_rd_resize
   0,               // ssim_vmaf_rd
   0,               // fast_decode
 };
@@ -938,7 +941,8 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 #if CONFIG_TUNE_VMAF
   RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
   RANGE_CHECK(extra_cfg, vmaf_preprocessing, 0, 3);
-  RANGE_CHECK(extra_cfg, ssim_vmaf_rd, 0, 100);
+  RANGE_CHECK_HI(extra_cfg, vmaf_rd_resize, 3);
+  RANGE_CHECK_HI(extra_cfg, ssim_vmaf_rd, 100);
 #endif
 
   RANGE_CHECK_HI(extra_cfg, fast_decode, 2);
@@ -1593,6 +1597,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   if (oxcf->vmaf_preprocessing > 0) {
     oxcf->override_preprocessing = 1;
   }
+
+  oxcf->vmaf_rd_resize = extra_cfg->vmaf_rd_resize;
+  oxcf->vmaf_rd_bsize = (extra_cfg->vmaf_rd_resize == 0) ? BLOCK_64X64 :
+                        (extra_cfg->vmaf_rd_resize == 1) ? BLOCK_32X32 :
+                        (extra_cfg->vmaf_rd_resize == 2) ? BLOCK_16X16 :
+                        (extra_cfg->vmaf_rd_resize == 3) ? BLOCK_8X8 :
+                        BLOCK_32X32;
 
   oxcf->ssim_vmaf_rd = extra_cfg->ssim_vmaf_rd;
 #endif
@@ -4123,6 +4134,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_vmaf_rd,
                               argv, err_string)) {
     extra_cfg.ssim_vmaf_rd = arg_parse_int_helper(&arg, err_string);
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_rd_resize,
+                              argv, err_string)) {
+    extra_cfg.vmaf_rd_resize = arg_parse_int_helper(&arg, err_string);
   }
 #endif
   else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.partition_info_path,
@@ -4590,6 +4604,13 @@ static aom_codec_err_t ctrl_set_vmaf_preprocessing(aom_codec_alg_priv_t *ctx,
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
+static aom_codec_err_t ctrl_set_vmaf_rd_resize(aom_codec_alg_priv_t *ctx,
+                                          va_list args) {
+  struct av1_extracfg extra_cfg = ctx->extra_cfg;
+  extra_cfg.vmaf_rd_resize = CAST(AOME_SET_VMAF_RD_RESIZE, args);
+  return update_extra_cfg(ctx, &extra_cfg);
+}
+
 static aom_codec_err_t ctrl_set_ssim_vmaf_rd(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
@@ -4758,6 +4779,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AOME_SET_LUMA_BIAS, ctrl_set_luma_bias },
   { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
   { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
+  { AOME_SET_VMAF_RD_RESIZE, ctrl_set_vmaf_rd_resize },
   { AOME_SET_SSIM_VMAF_RD, ctrl_set_ssim_vmaf_rd },
   { AOME_SET_FAST_DECODE, ctrl_set_fast_decode },
 

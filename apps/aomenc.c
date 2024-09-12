@@ -235,6 +235,7 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_VMAF_MODEL_PATH,
                                         AOME_SET_VMAF_QUANTIZATION,
                                         AOME_SET_VMAF_PREPROCESSING,
+                                        AOME_SET_VMAF_RD_RESIZE,
                                         AOME_SET_SSIM_VMAF_RD,
 #endif
                                         AV1E_SET_DV_COST_UPD_FREQ,
@@ -453,6 +454,7 @@ static const arg_def_t *const av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.vmaf_model_path,
   &g_av1_codec_arg_defs.vmaf_quantization,
   &g_av1_codec_arg_defs.vmaf_preprocessing,
+  &g_av1_codec_arg_defs.vmaf_rd_resize,
   &g_av1_codec_arg_defs.ssim_vmaf_rd,
 #endif
   &g_av1_codec_arg_defs.dv_cost_upd_freq,

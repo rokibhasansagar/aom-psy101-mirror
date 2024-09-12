@@ -611,8 +611,12 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
   AV1_COMMON *cm = &cpi->common;
   const int y_width = cpi->source->y_width;
   const int y_height = cpi->source->y_height;
-  const int resized_block_size = BLOCK_8X8;
-  const int resize_factor = 8;
+  const int resized_block_size = cpi->oxcf.vmaf_rd_bsize;
+  const int resize_factor = (cpi->oxcf.vmaf_rd_resize == 0) ? 1 :
+                            (cpi->oxcf.vmaf_rd_resize == 1) ? 2 :
+                            (cpi->oxcf.vmaf_rd_resize == 2) ? 4 :
+                            (cpi->oxcf.vmaf_rd_resize == 3) ? 8 : 2;
+  cpi->vmaf_info.resize_factor = resize_factor;
   const int bit_depth = cpi->td.mb.e_mbd.bd;
   const int ss_x = cpi->source->subsampling_x;
   const int ss_y = cpi->source->subsampling_y;
@@ -734,6 +738,7 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
                          const BLOCK_SIZE bsize, const int mi_row,
                          const int mi_col, int *const rdmult) {
   const AV1_COMMON *const cm = &cpi->common;
+  const int resize_factor = cpi->vmaf_info.resize_factor;
 
   const int bsize_base = BLOCK_64X64;
   const int num_mi_w = mi_size_wide[bsize_base];
@@ -742,6 +747,7 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
   const int num_rows = (cm->mi_params.mi_rows + num_mi_h - 1) / num_mi_h;
   const int num_bcols = (mi_size_wide[bsize] + num_mi_w - 1) / num_mi_w;
   const int num_brows = (mi_size_high[bsize] + num_mi_h - 1) / num_mi_h;
+
   int row, col;
   double num_of_mi = 0.0;
   double geom_mean_of_scale = 0.0;
@@ -750,12 +756,27 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
        row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
     for (col = mi_col / num_mi_h;
          col < num_cols && col < mi_col / num_mi_h + num_bcols; ++col) {
-      const int index = row * num_cols + col;
-      geom_mean_of_scale += log(cpi->vmaf_info.rdmult_scaling_factors[index]);
-      num_of_mi += 1.0;
+      int resized_row = row / resize_factor;
+      int resized_col = col / resize_factor;
+      int resized_index =
+          resized_row * (num_cols / resize_factor) + resized_col;
+
+      if (resized_index <
+          num_rows * num_cols / (resize_factor * resize_factor)) {
+        double scale_factor =
+            cpi->vmaf_info.rdmult_scaling_factors[resized_index];
+        scale_factor = pow(scale_factor, 1.0 / (resize_factor * resize_factor));
+        geom_mean_of_scale += log(scale_factor);
+        num_of_mi += 1.0;
+      }
     }
   }
-  geom_mean_of_scale = exp(geom_mean_of_scale / num_of_mi);
+
+  if (num_of_mi > 0) {
+    geom_mean_of_scale = exp(geom_mean_of_scale / num_of_mi);
+  } else {
+    geom_mean_of_scale = 1.0;
+  }
 
   *rdmult = (int)((double)(*rdmult) * geom_mean_of_scale + 0.5);
   *rdmult = AOMMAX(*rdmult, 0);
