@@ -1099,10 +1099,14 @@ typedef struct AV1EncoderConfig {
 
   int luma_bias;
 
+#if CONFIG_TUNE_VMAF
   bool vmaf_quantization;
 
   int vmaf_preprocessing;
   bool override_preprocessing;
+
+  unsigned int ssim_vmaf_rd;
+#endif
 
   int fast_decode;
   /*!\endcond */

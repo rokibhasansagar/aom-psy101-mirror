@@ -1584,8 +1584,11 @@ enum aome_enc_control_id {
   /*!\brief Control VMAF Preprocessing */
   AOME_SET_VMAF_PREPROCESSING = 173,
 
+  /*!\brief Control the share of SSIM RD to replace VMAF RD */
+  AOME_SET_SSIM_VMAF_RD = 174,
+
   /*!\brief Improve decoding performance of the aomenc-generated bitstream */
-  AOME_SET_FAST_DECODE = 174,
+  AOME_SET_FAST_DECODE = 175,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -1690,7 +1693,6 @@ typedef enum {
   AOM_TUNE_VMAF_NEG_MAX_GAIN = 7,
   AOM_TUNE_BUTTERAUGLI = 8,
   AOM_TUNE_VMAF_SALIENCY_MAP = 9,
-  AOM_TUNE_SSIM_VMAF_RD = 10,
 } aom_tune_metric;
 
 /*!\brief Distortion metric to use for RD optimization.
@@ -2270,6 +2272,9 @@ AOM_CTRL_USE_TYPE(AOME_SET_VMAF_QUANTIZATION, int)
 
 AOM_CTRL_USE_TYPE(AOME_SET_VMAF_PREPROCESSING, int)
 #define AOM_CTRL_AOME_SET_VMAF_PREPROCESSING
+
+AOM_CTRL_USE_TYPE(AOME_SET_SSIM_VMAF_RD, int)
+#define AOM_CTRL_AOME_SET_SSIM_VMAF_RD
 
 AOM_CTRL_USE_TYPE(AOME_SET_FAST_DECODE, int)
 #define AOM_CTRL_AOME_SET_FAST_DECODE

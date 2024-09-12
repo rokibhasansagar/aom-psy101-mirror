@@ -624,15 +624,26 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
   else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITHOUT_PREPROCESSING ||
            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN ||
            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
-    av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
-  }
-  else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM_VMAF_RD) {
-    int ssim_rdmult = x->rdmult;
-    av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
-                        &ssim_rdmult);
     int vmaf_rdmult = x->rdmult;
-    av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &vmaf_rdmult);
-    x->rdmult = (int)((int64_t)ssim_rdmult / 2 + (int64_t)vmaf_rdmult / 2);
+    int ssim_rdmult = x->rdmult;
+
+    if (cpi->oxcf.ssim_vmaf_rd < 100) {
+      av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &vmaf_rdmult);
+    }
+
+    if (cpi->oxcf.ssim_vmaf_rd > 0 && cpi->oxcf.ssim_vmaf_rd < 100) {
+      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                          &ssim_rdmult);
+      float ssim_factor = (float)cpi->oxcf.ssim_vmaf_rd / 100.0f;
+      x->rdmult =
+          (int)((1.0f - ssim_factor) * vmaf_rdmult + ssim_factor * ssim_rdmult);
+    } else if (cpi->oxcf.ssim_vmaf_rd == 100) {
+      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                          &ssim_rdmult);
+      x->rdmult = ssim_rdmult;
+    } else {
+      x->rdmult = vmaf_rdmult;
+    }
   }
 #endif
 #if CONFIG_TUNE_BUTTERAUGLI
@@ -640,8 +651,9 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
     av1_set_butteraugli_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
   }
 #endif
-  if (cpi->oxcf.mode == ALLINTRA || cpi->oxcf.tune_cfg.content ==
-  AOM_CONTENT_PSY || cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
+  if (cpi->oxcf.mode == ALLINTRA ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
     x->rdmult = (int)(((int64_t)x->rdmult * x->intra_sb_rdmult_modifier) >> 7);
   }
 
@@ -5582,8 +5594,9 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   // Set buffers and offsets.
   av1_set_offsets(cpi, tile_info, x, mi_row, mi_col, bsize);
 
-  if (cpi->oxcf.mode == ALLINTRA || cpi->oxcf.tune_cfg.content ==
-  AOM_CONTENT_PSY || cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
+  if (cpi->oxcf.mode == ALLINTRA ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
     if (bsize == cm->seq_params->sb_size) {
       double var_min, var_max;
       log_sub_block_var(cpi, x, bsize, &var_min, &var_max);
