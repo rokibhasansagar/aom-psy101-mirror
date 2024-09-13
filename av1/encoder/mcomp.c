@@ -350,8 +350,8 @@ static inline int mvsad_err_cost_(const FULLPEL_MV *mv,
 
 // Search site initialization for DIAMOND / CLAMPED_DIAMOND search methods.
 // level = 0: DIAMOND, level = 1: CLAMPED_DIAMOND.
-void av1_init_dsmotion_compensation(search_site_config *cfg, int stride,
-                                    int level) {
+static void init_dsmotion_compensation(search_site_config *cfg, int stride,
+                                       int level) {
   int num_search_steps = 0;
   int stage_index = MAX_MVSEARCH_STEPS - 1;
 
@@ -433,8 +433,8 @@ void av1_init_motion_fpf(search_site_config *cfg, int stride) {
 
 // Search site initialization for NSTEP / NSTEP_8PT search methods.
 // level = 0: NSTEP, level = 1: NSTEP_8PT.
-void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride,
-                                        int level) {
+static void init_motion_compensation_nstep(search_site_config *cfg, int stride,
+                                           int level) {
   int num_search_steps = 0;
   int stage_index = 0;
   cfg->stride = stride;
@@ -479,8 +479,8 @@ void av1_init_motion_compensation_nstep(search_site_config *cfg, int stride,
 
 // Search site initialization for BIGDIA / FAST_BIGDIA / FAST_DIAMOND
 // search methods.
-void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride,
-                                         int level) {
+static void init_motion_compensation_bigdia(search_site_config *cfg, int stride,
+                                            int level) {
   (void)level;
   cfg->stride = stride;
   // First scale has 4-closest points, the rest have 8 points in diamond
@@ -534,8 +534,8 @@ void av1_init_motion_compensation_bigdia(search_site_config *cfg, int stride,
 }
 
 // Search site initialization for SQUARE search method.
-void av1_init_motion_compensation_square(search_site_config *cfg, int stride,
-                                         int level) {
+static void init_motion_compensation_square(search_site_config *cfg, int stride,
+                                            int level) {
   (void)level;
   cfg->stride = stride;
   // All scales have 8 closest points in square shape.
@@ -588,8 +588,8 @@ void av1_init_motion_compensation_square(search_site_config *cfg, int stride,
 }
 
 // Search site initialization for HEX / FAST_HEX search methods.
-void av1_init_motion_compensation_hex(search_site_config *cfg, int stride,
-                                      int level) {
+static void init_motion_compensation_hex(search_site_config *cfg, int stride,
+                                         int level) {
   (void)level;
   cfg->stride = stride;
   // First scale has 8-closest points, the rest have 6 points in hex shape
@@ -638,10 +638,10 @@ void av1_init_motion_compensation_hex(search_site_config *cfg, int stride,
 
 const av1_init_search_site_config
     av1_init_motion_compensation[NUM_DISTINCT_SEARCH_METHODS] = {
-      av1_init_dsmotion_compensation,     av1_init_motion_compensation_nstep,
-      av1_init_motion_compensation_nstep, av1_init_dsmotion_compensation,
-      av1_init_motion_compensation_hex,   av1_init_motion_compensation_bigdia,
-      av1_init_motion_compensation_square
+      init_dsmotion_compensation,     init_motion_compensation_nstep,
+      init_motion_compensation_nstep, init_dsmotion_compensation,
+      init_motion_compensation_hex,   init_motion_compensation_bigdia,
+      init_motion_compensation_square
     };
 
 // Checks whether the mv is within range of the mv_limits
@@ -3950,48 +3950,4 @@ int av1_get_mvpred_sse(const MV_COST_PARAMS *mv_cost_params,
   (void)var;
 
   return sse + mv_err_cost_(&mv, mv_cost_params);
-}
-
-static inline int get_mvpred_av_var(const MV_COST_PARAMS *mv_cost_params,
-                                    const FULLPEL_MV best_mv,
-                                    const uint8_t *second_pred,
-                                    const aom_variance_fn_ptr_t *vfp,
-                                    const struct buf_2d *src,
-                                    const struct buf_2d *pre) {
-  const MV mv = get_mv_from_fullmv(&best_mv);
-  unsigned int unused;
-
-  return vfp->svaf(get_buf_from_fullmv(pre, &best_mv), pre->stride, 0, 0,
-                   src->buf, src->stride, &unused, second_pred) +
-         mv_err_cost_(&mv, mv_cost_params);
-}
-
-static inline int get_mvpred_mask_var(
-    const MV_COST_PARAMS *mv_cost_params, const FULLPEL_MV best_mv,
-    const uint8_t *second_pred, const uint8_t *mask, int mask_stride,
-    int invert_mask, const aom_variance_fn_ptr_t *vfp, const struct buf_2d *src,
-    const struct buf_2d *pre) {
-  const MV mv = get_mv_from_fullmv(&best_mv);
-  unsigned int unused;
-
-  return vfp->msvf(get_buf_from_fullmv(pre, &best_mv), pre->stride, 0, 0,
-                   src->buf, src->stride, second_pred, mask, mask_stride,
-                   invert_mask, &unused) +
-         mv_err_cost_(&mv, mv_cost_params);
-}
-
-int av1_get_mvpred_compound_var(const MV_COST_PARAMS *mv_cost_params,
-                                const FULLPEL_MV best_mv,
-                                const uint8_t *second_pred, const uint8_t *mask,
-                                int mask_stride, int invert_mask,
-                                const aom_variance_fn_ptr_t *vfp,
-                                const struct buf_2d *src,
-                                const struct buf_2d *pre) {
-  if (mask) {
-    return get_mvpred_mask_var(mv_cost_params, best_mv, second_pred, mask,
-                               mask_stride, invert_mask, vfp, src, pre);
-  } else {
-    return get_mvpred_av_var(mv_cost_params, best_mv, second_pred, vfp, src,
-                             pre);
-  }
 }

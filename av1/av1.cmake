@@ -232,8 +232,6 @@ list(APPEND AOM_AV1_ENCODER_SOURCES
             "${AOM_ROOT}/av1/encoder/svc_layercontext.h"
             "${AOM_ROOT}/av1/encoder/temporal_filter.c"
             "${AOM_ROOT}/av1/encoder/temporal_filter.h"
-            "${AOM_ROOT}/av1/encoder/thirdpass.c"
-            "${AOM_ROOT}/av1/encoder/thirdpass.h"
             "${AOM_ROOT}/av1/encoder/tokenize.c"
             "${AOM_ROOT}/av1/encoder/tokenize.h"
             "${AOM_ROOT}/av1/encoder/tpl_model.c"
@@ -329,9 +327,6 @@ if(NOT CONFIG_EXCLUDE_SIMD_MISMATCH)
               "${AOM_ROOT}/av1/encoder/x86/ml_sse3.c"
               "${AOM_ROOT}/av1/encoder/x86/ml_sse3.h")
 endif()
-
-list(APPEND AOM_AV1_ENCODER_INTRIN_SSSE3
-            "${AOM_ROOT}/av1/encoder/x86/reconinter_enc_ssse3.c")
 
 list(APPEND AOM_AV1_ENCODER_ASM_SSSE3_X86_64
             "${AOM_ROOT}/av1/encoder/x86/av1_quantize_ssse3_x86_64.asm")
@@ -443,6 +438,11 @@ list(APPEND AOM_AV1_ENCODER_INTRIN_SSE4_2
 
 list(APPEND AOM_AV1_COMMON_INTRIN_VSX "${AOM_ROOT}/av1/common/ppc/cfl_ppc.c")
 
+if(CONFIG_THREE_PASS)
+  list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/thirdpass.c"
+              "${AOM_ROOT}/av1/encoder/thirdpass.h")
+endif()
+
 if(CONFIG_TUNE_VMAF)
   list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/tune_vmaf.c"
               "${AOM_ROOT}/av1/encoder/tune_vmaf.h")
@@ -548,6 +548,54 @@ if(CONFIG_INTERNAL_STATS)
 endif()
 
 if(CONFIG_REALTIME_ONLY)
+  if(NOT CONFIG_AV1_DECODER)
+    list(REMOVE_ITEM AOM_AV1_COMMON_SOURCES "${AOM_ROOT}/av1/common/cfl.c"
+                     "${AOM_ROOT}/av1/common/cfl.h"
+                     "${AOM_ROOT}/av1/common/restoration.c"
+                     "${AOM_ROOT}/av1/common/restoration.h"
+                     "${AOM_ROOT}/av1/common/warped_motion.c"
+                     "${AOM_ROOT}/av1/common/warped_motion.h")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_SSE2
+                     "${AOM_ROOT}/av1/common/x86/cfl_sse2.c"
+                     "${AOM_ROOT}/av1/common/x86/warp_plane_sse2.c"
+                     "${AOM_ROOT}/av1/common/x86/wiener_convolve_sse2.c")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_SSE4_1
+                     "${AOM_ROOT}/av1/common/x86/highbd_warp_plane_sse4.c"
+                     "${AOM_ROOT}/av1/common/x86/selfguided_sse4.c"
+                     "${AOM_ROOT}/av1/common/x86/warp_plane_sse4.c")
+
+    list(
+      REMOVE_ITEM AOM_AV1_COMMON_INTRIN_SSSE3
+                  "${AOM_ROOT}/av1/common/x86/cfl_ssse3.c"
+                  "${AOM_ROOT}/av1/common/x86/highbd_wiener_convolve_ssse3.c")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_AVX2
+                     "${AOM_ROOT}/av1/common/x86/cfl_avx2.c"
+                     "${AOM_ROOT}/av1/common/x86/highbd_warp_affine_avx2.c"
+                     "${AOM_ROOT}/av1/common/x86/highbd_wiener_convolve_avx2.c"
+                     "${AOM_ROOT}/av1/common/x86/selfguided_avx2.c"
+                     "${AOM_ROOT}/av1/common/x86/warp_plane_avx2.c"
+                     "${AOM_ROOT}/av1/common/x86/wiener_convolve_avx2.c")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_NEON
+                     "${AOM_ROOT}/av1/common/arm/cfl_neon.c"
+                     "${AOM_ROOT}/av1/common/arm/highbd_warp_plane_neon.c"
+                     "${AOM_ROOT}/av1/common/arm/highbd_wiener_convolve_neon.c"
+                     "${AOM_ROOT}/av1/common/arm/selfguided_neon.c"
+                     "${AOM_ROOT}/av1/common/arm/warp_plane_neon.c"
+                     "${AOM_ROOT}/av1/common/arm/warp_plane_neon.h"
+                     "${AOM_ROOT}/av1/common/arm/wiener_convolve_neon.c")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_NEON_I8MM
+                     "${AOM_ROOT}/av1/common/arm/warp_plane_neon_i8mm.c")
+
+    list(REMOVE_ITEM AOM_AV1_COMMON_INTRIN_SVE
+                     "${AOM_ROOT}/av1/common/arm/highbd_warp_plane_sve.c"
+                     "${AOM_ROOT}/av1/common/arm/warp_plane_sve.c")
+  endif()
+
   list(REMOVE_ITEM AOM_AV1_ENCODER_INTRIN_SSE2
                    "${AOM_ROOT}/av1/encoder/x86/highbd_temporal_filter_sse2.c"
                    "${AOM_ROOT}/av1/encoder/x86/temporal_filter_sse2.c")
@@ -570,6 +618,9 @@ if(CONFIG_REALTIME_ONLY)
 
   list(REMOVE_ITEM AOM_AV1_ENCODER_INTRIN_NEON_DOTPROD
                    "${AOM_ROOT}/av1/encoder/arm/temporal_filter_neon_dotprod.c")
+
+  list(REMOVE_ITEM AOM_AV1_ENCODER_INTRIN_SVE
+                   "${AOM_ROOT}/av1/encoder/arm/pickrst_sve.c")
 
   list(REMOVE_ITEM AOM_AV1_ENCODER_SOURCES
                    "${AOM_ROOT}/av1/encoder/cnn.c"
@@ -665,12 +716,6 @@ function(setup_av1_targets)
       if(AOM_AV1_DECODER_INTRIN_SSSE3)
         add_intrinsics_object_library("-mssse3" "ssse3" "aom_av1_decoder"
                                       "AOM_AV1_DECODER_INTRIN_SSSE3")
-      endif()
-    endif()
-    if(CONFIG_AV1_ENCODER)
-      if(AOM_AV1_ENCODER_INTRIN_SSSE3)
-        add_intrinsics_object_library("-mssse3" "ssse3" "aom_av1_encoder"
-                                      "AOM_AV1_ENCODER_INTRIN_SSSE3")
       endif()
     endif()
   endif()

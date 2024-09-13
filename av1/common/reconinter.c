@@ -68,6 +68,10 @@ void av1_init_warp_params(InterPredParams *inter_pred_params,
   if (allow_warp(mi, warp_types, &xd->global_motion[mi->ref_frame[ref]], 0,
                  inter_pred_params->scale_factors,
                  &inter_pred_params->warp_params)) {
+#if CONFIG_REALTIME_ONLY && !CONFIG_AV1_DECODER
+    aom_internal_error(xd->error_info, AOM_CODEC_UNSUP_FEATURE,
+                       "Warped motion is disabled in realtime only build.");
+#endif  // CONFIG_REALTIME_ONLY && !CONFIG_AV1_DECODER
     inter_pred_params->mode = WARP_PRED;
   }
 }
@@ -103,6 +107,7 @@ void av1_make_inter_predictor(const uint8_t *src, int src_stride, uint8_t *dst,
                     inter_pred_params->interp_filter_params);
 #endif
   }
+#if !CONFIG_REALTIME_ONLY || CONFIG_AV1_DECODER
   // TODO(jingning): av1_warp_plane() can be further cleaned up.
   else if (inter_pred_params->mode == WARP_PRED) {
     av1_warp_plane(
@@ -115,7 +120,9 @@ void av1_make_inter_predictor(const uint8_t *src, int src_stride, uint8_t *dst,
         inter_pred_params->block_width, inter_pred_params->block_height,
         dst_stride, inter_pred_params->subsampling_x,
         inter_pred_params->subsampling_y, &inter_pred_params->conv_params);
-  } else {
+  }
+#endif  // !CONFIG_REALTIME_ONLY || CONFIG_AV1_DECODER
+  else {
     assert(0 && "Unsupported inter_pred_params->mode");
   }
 }
@@ -832,7 +839,7 @@ int av1_skip_u4x4_pred_in_obmc(BLOCK_SIZE bsize,
   }
 }
 
-void av1_modify_neighbor_predictor_for_obmc(MB_MODE_INFO *mbmi) {
+static void modify_neighbor_predictor_for_obmc(MB_MODE_INFO *mbmi) {
   mbmi->ref_frame[1] = NONE_FRAME;
   mbmi->interinter_comp.type = COMPOUND_AVERAGE;
 }
@@ -976,7 +983,7 @@ void av1_setup_build_prediction_by_above_pred(
   const BLOCK_SIZE a_bsize = AOMMAX(BLOCK_8X8, above_mbmi->bsize);
   const int above_mi_col = xd->mi_col + rel_mi_col;
 
-  av1_modify_neighbor_predictor_for_obmc(above_mbmi);
+  modify_neighbor_predictor_for_obmc(above_mbmi);
 
   for (int j = 0; j < num_planes; ++j) {
     struct macroblockd_plane *const pd = &xd->plane[j];
@@ -1015,7 +1022,7 @@ void av1_setup_build_prediction_by_left_pred(MACROBLOCKD *xd, int rel_mi_row,
   const BLOCK_SIZE l_bsize = AOMMAX(BLOCK_8X8, left_mbmi->bsize);
   const int left_mi_row = xd->mi_row + rel_mi_row;
 
-  av1_modify_neighbor_predictor_for_obmc(left_mbmi);
+  modify_neighbor_predictor_for_obmc(left_mbmi);
 
   for (int j = 0; j < num_planes; ++j) {
     struct macroblockd_plane *const pd = &xd->plane[j];

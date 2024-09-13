@@ -86,6 +86,7 @@ class DatarateTestSVC
     comp_pred_ = 0;
     dynamic_enable_disable_mode_ = 0;
     intra_only_ = 0;
+    intra_only_single_layer_ = false;
     frame_to_start_decoding_ = 0;
     layer_to_decode_ = 0;
     frame_sync_ = 0;
@@ -675,9 +676,20 @@ class DatarateTestSVC
     // Always reference LAST.
     ref_frame_config->reference[0] = 1;
     if (number_temporal_layers_ == 1 && number_spatial_layers_ == 1) {
+      layer_id->temporal_layer_id = 0;
       ref_frame_config->refresh[0] = 1;
       if (rps_mode)
         ref_config_rps(ref_frame_config, frame_cnt, rps_recovery_frame);
+      if (intra_only_single_layer_) {
+        // This repros the crash in Bug: 363016123.
+        ref_frame_config->ref_idx[0] = 0;
+        ref_frame_config->ref_idx[3] = 1;
+        ref_frame_config->ref_idx[6] = 2;
+        if (frame_cnt == 1) {
+          for (int i = 0; i < INTER_REFS_PER_FRAME; i++)
+            ref_frame_config->reference[i] = 0;
+        }
+      }
     }
     if (number_temporal_layers_ == 2 && number_spatial_layers_ == 1) {
       // 2-temporal layer.
@@ -899,11 +911,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Top temporal layers are non_reference, so exlcude them from
     // mismatch count, since loopfilter/cdef is not applied for these on
     // encoder side, but is always applied on decoder.
     // This means 150 = #frames(300) - #TL2_frames(150).
     EXPECT_EQ((int)GetMismatchFrames(), 150);
+#endif
   }
 
   virtual void SetFrameQpSVC3TL1SLTest() {
@@ -1000,6 +1014,7 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 2.0)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Top temporal layers are non_reference, so exlcude them from
     // mismatch count, since loopfilter/cdef is not applied for these on
     // encoder side, but is always applied on decoder.
@@ -1007,6 +1022,7 @@ class DatarateTestSVC
     // We use LE for screen since loopfilter level can become very small
     // or zero and then the frame is not a mismatch.
     EXPECT_LE((int)GetMismatchFrames(), 30);
+#endif
   }
 
   virtual void BasicRateTargetingSVC2TL1SLScreenDropFrameTest() {
@@ -1038,6 +1054,7 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.8)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Top temporal layers are non_reference, so exlcude them from
     // mismatch count, since loopfilter/cdef is not applied for these on
     // encoder side, but is always applied on decoder.
@@ -1045,6 +1062,7 @@ class DatarateTestSVC
     // We use LE for screen since loopfilter level can become very small
     // or zero and then the frame is not a mismatch.
     EXPECT_LE((int)GetMismatchFrames(), 150);
+#endif
   }
 
   virtual void BasicRateTargetingSVC1TL3SLScreenTest() {
@@ -1076,7 +1094,9 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.5)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC1TL1SLScreenScCutsMotionTest() {
@@ -1107,7 +1127,9 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.7)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLResizeTest() {
@@ -1140,6 +1162,7 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     unsigned int last_w = cfg_.g_w;
     unsigned int last_h = cfg_.g_h;
     int resize_down_count = 0;
@@ -1156,6 +1179,9 @@ class DatarateTestSVC
     }
     // Must be at least one resize down.
     ASSERT_GE(resize_down_count, 1);
+#else
+    printf("Warning: AV1 decoder unavailable, unable to check resize count!\n");
+#endif
   }
 
   virtual void BasicRateTargetingSVC1TL2SLTest() {
@@ -1232,9 +1258,11 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Only base spatial layer is decoded and there are no non-referenece
     // frames on S0, so #mismatch must be 0.
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL3SLIntraMidSeqDecodeAll() {
@@ -1280,9 +1308,11 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // All 3 spatial layers are decoded, starting at frame 0, so there are
     // and there 300/2 = 150 non-reference frames, so mismatch is 150.
     EXPECT_EQ((int)GetMismatchFrames(), 150);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL3SLSimulcast() {
@@ -1332,11 +1362,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.7)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Only top spatial layer (SL2) is decoded, starting at frame 150
     // (frame_to_start_decoding_), so there (300 - 150) / 2 = 75
     // non-reference frames, so mismatch is 75.
     int num_mismatch = (num_frames - frame_to_start_decoding_) / 2;
     EXPECT_EQ((int)GetMismatchFrames(), num_mismatch);
+#endif
   }
 
   virtual void BasicRateTargetingSVC1TL2SLIntraOnlyTest() {
@@ -1367,6 +1399,32 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+  }
+
+  virtual void BasicRateTargetingSVC1TL1SLIntraOnlyTest() {
+    cfg_.rc_buf_initial_sz = 500;
+    cfg_.rc_buf_optimal_sz = 500;
+    cfg_.rc_buf_sz = 1000;
+    cfg_.rc_dropframe_thresh = 0;
+    cfg_.rc_min_quantizer = 0;
+    cfg_.rc_max_quantizer = 63;
+    cfg_.rc_end_usage = AOM_CBR;
+    cfg_.g_lag_in_frames = 0;
+    cfg_.g_error_resilient = 0;
+
+    ::libaom_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352,
+                                         288, 30, 1, 0, 300);
+    const int bitrate_array[2] = { 300, 600 };
+    cfg_.rc_target_bitrate = bitrate_array[GET_PARAM(4)];
+    ResetModel();
+    intra_only_single_layer_ = true;
+    number_temporal_layers_ = 1;
+    number_spatial_layers_ = 1;
+    ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
+    ASSERT_GE(effective_datarate_tl[0], cfg_.rc_target_bitrate * 0.80)
+        << " The datarate for the file is lower than target by too much!";
+    ASSERT_LE(effective_datarate_tl[0], cfg_.rc_target_bitrate * 1.60)
+        << " The datarate for the file is greater than target by too much!";
   }
 
   virtual void BasicRateTargetingSVC1TL3SLTest() {
@@ -1919,11 +1977,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLDropAllEnhTest() {
@@ -1964,11 +2024,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLDropTL2EnhTest() {
@@ -2009,11 +2071,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLDropAllEnhFrameERTest() {
@@ -2055,11 +2119,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLDropSetEnhFrameERTest() {
@@ -2086,12 +2152,16 @@ class DatarateTestSVC
     // so we can continue decoding without mismatch (since LAST is the
     // only reference and error_resilient = 1 on TL1/TL2 frames).
     int n = 0;
+#if CONFIG_AV1_DECODER
     int num_nonref = 300 / 2;
+#endif
     for (int i = 101; i < 200; i++) {
       if (i % 4 != 0) {
         drop_frames_list_[n] = i;
         n++;
+#if CONFIG_AV1_DECODER
         if (i % 2 != 0) num_nonref -= 1;
+#endif
       }
     }
     drop_frames_ = n;
@@ -2106,11 +2176,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), num_nonref);
+#endif
   }
 
   virtual void BasicRateTargetingSVC2TL1SLDropSetEnhER0Test() {
@@ -2137,12 +2209,16 @@ class DatarateTestSVC
     // so we can continue decoding without mismatch (since LAST is the
     // only reference).
     int n = 0;
+#if CONFIG_AV1_DECODER
     int num_nonref = 300 / 2;
+#endif
     for (int i = 101; i < 200; i++) {
       if (i % 2 != 0) {
         drop_frames_list_[n] = i;
         n++;
+#if CONFIG_AV1_DECODER
         if (i % 2 != 0) num_nonref -= 1;
+#endif
       }
     }
     drop_frames_ = n;
@@ -2156,11 +2232,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), num_nonref);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLDropSetEnhER0Test() {
@@ -2187,12 +2265,16 @@ class DatarateTestSVC
     // so we can continue decoding without mismatch (since LAST is the
     // only reference).
     int n = 0;
+#if CONFIG_AV1_DECODER
     int num_nonref = 300 / 2;
+#endif
     for (int i = 101; i < 200; i++) {
       if (i % 4 != 0) {
         drop_frames_list_[n] = i;
         n++;
+#if CONFIG_AV1_DECODER
         if (i % 2 != 0) num_nonref -= 1;
+#endif
       }
     }
     drop_frames_ = n;
@@ -2207,11 +2289,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), num_nonref);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL3SLDropSetEnhER0Test() {
@@ -2236,12 +2320,16 @@ class DatarateTestSVC
     // only reference).
     // Drop here means drop whole superframe.
     int n = 0;
+#if CONFIG_AV1_DECODER
     int num_nonref = 300 / 2;
+#endif
     for (int i = 101; i < 200; i++) {
       if (i % 4 != 0) {
         drop_frames_list_[n] = i;
         n++;
+#if CONFIG_AV1_DECODER
         if (i % 2 != 0) num_nonref -= 1;
+#endif
       }
     }
     number_temporal_layers_ = 3;
@@ -2270,11 +2358,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 * number_spatial_layers_ - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), num_nonref);
+#endif
   }
 
   virtual void BasicRateTargetingSVC3TL1SLMultiRefCompoundTest() {
@@ -2413,11 +2503,13 @@ class DatarateTestSVC
       ASSERT_LE(effective_datarate_tl[i], target_layer_bitrate_[i] * 1.60)
           << " The datarate for the file is greater than target by too much!";
     }
+#if CONFIG_AV1_DECODER
     // Test that no mismatches have been found.
     std::cout << "          Decoded frames: " << GetDecodedFrames() << "\n";
     std::cout << "          Mismatch frames: " << GetMismatchFrames() << "\n";
     EXPECT_EQ(300 - GetDecodedFrames(), drop_frames_);
     EXPECT_EQ((int)GetMismatchFrames(), 0);
+#endif
   }
 
   int layer_frame_cnt_;
@@ -2442,6 +2534,7 @@ class DatarateTestSVC
   int comp_pred_;
   int dynamic_enable_disable_mode_;
   int intra_only_;
+  int intra_only_single_layer_;
   unsigned int frame_to_start_decoding_;
   unsigned int layer_to_decode_;
   unsigned int frame_sync_;
@@ -2530,6 +2623,12 @@ TEST_P(DatarateTestSVC, BasicRateTargetingSVC3TL3SLSimulcast) {
 // with Intra-only frame inserted in the stream.
 TEST_P(DatarateTestSVC, BasicRateTargetingSVC1TL2SLIntraOnly) {
   BasicRateTargetingSVC1TL2SLIntraOnlyTest();
+}
+
+// Check basic rate targeting for CBR, for 1 spatial layers, 1 temporal,
+// with Intra-only frame (frame with no references) inserted in the stream.
+TEST_P(DatarateTestSVC, BasicRateTargetingSVC1TL1SLIntraOnly) {
+  BasicRateTargetingSVC1TL1SLIntraOnlyTest();
 }
 
 // Check basic rate targeting for CBR, for 3 spatial layers, 1 temporal.

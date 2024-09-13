@@ -47,11 +47,14 @@ list(APPEND AOM_DSP_COMMON_SOURCES
             "${AOM_ROOT}/aom_dsp/x86/convolve_common_intrin.h")
 
 list(APPEND AOM_DSP_COMMON_ASM_SSE2
-            "${AOM_ROOT}/aom_dsp/x86/aom_high_subpixel_8t_sse2.asm"
-            "${AOM_ROOT}/aom_dsp/x86/aom_high_subpixel_bilinear_sse2.asm"
-            "${AOM_ROOT}/aom_dsp/x86/highbd_intrapred_asm_sse2.asm"
             "${AOM_ROOT}/aom_dsp/x86/intrapred_asm_sse2.asm"
             "${AOM_ROOT}/aom_dsp/x86/inv_wht_sse2.asm")
+if(CONFIG_AV1_HIGHBITDEPTH)
+  list(APPEND AOM_DSP_COMMON_ASM_SSE2
+              "${AOM_ROOT}/aom_dsp/x86/aom_high_subpixel_8t_sse2.asm"
+              "${AOM_ROOT}/aom_dsp/x86/aom_high_subpixel_bilinear_sse2.asm"
+              "${AOM_ROOT}/aom_dsp/x86/highbd_intrapred_asm_sse2.asm")
+endif()
 
 list(APPEND AOM_DSP_COMMON_INTRIN_SSE2
             "${AOM_ROOT}/aom_dsp/x86/aom_convolve_copy_sse2.c"
@@ -157,8 +160,6 @@ endif()
 if(CONFIG_AV1_ENCODER)
   list(APPEND AOM_DSP_ENCODER_SOURCES
               "${AOM_ROOT}/aom_dsp/avg.c"
-              "${AOM_ROOT}/aom_dsp/binary_codes_writer.c"
-              "${AOM_ROOT}/aom_dsp/binary_codes_writer.h"
               "${AOM_ROOT}/aom_dsp/bitwriter.c"
               "${AOM_ROOT}/aom_dsp/bitwriter.h"
               "${AOM_ROOT}/aom_dsp/blk_sse_sum.c"
@@ -190,6 +191,8 @@ if(CONFIG_AV1_ENCODER)
   # Flow estimation library
   if(NOT CONFIG_REALTIME_ONLY)
     list(APPEND AOM_DSP_ENCODER_SOURCES "${AOM_ROOT}/aom_dsp/pyramid.c"
+                "${AOM_ROOT}/aom_dsp/binary_codes_writer.c"
+                "${AOM_ROOT}/aom_dsp/binary_codes_writer.h"
                 "${AOM_ROOT}/aom_dsp/flow_estimation/corner_detect.c"
                 "${AOM_ROOT}/aom_dsp/flow_estimation/corner_match.c"
                 "${AOM_ROOT}/aom_dsp/flow_estimation/disflow.c"
@@ -263,7 +266,6 @@ if(CONFIG_AV1_ENCODER)
   list(APPEND AOM_DSP_ENCODER_INTRIN_SSSE3
               "${AOM_ROOT}/aom_dsp/x86/masked_sad_intrin_ssse3.h"
               "${AOM_ROOT}/aom_dsp/x86/masked_sad_intrin_ssse3.c"
-              "${AOM_ROOT}/aom_dsp/x86/masked_sad4d_ssse3.c"
               "${AOM_ROOT}/aom_dsp/x86/masked_variance_intrin_ssse3.h"
               "${AOM_ROOT}/aom_dsp/x86/masked_variance_intrin_ssse3.c"
               "${AOM_ROOT}/aom_dsp/x86/quantize_ssse3.c"
@@ -283,7 +285,6 @@ if(CONFIG_AV1_ENCODER)
               "${AOM_ROOT}/aom_dsp/arm/sadxd_neon.c"
               "${AOM_ROOT}/aom_dsp/arm/sad_neon.c"
               "${AOM_ROOT}/aom_dsp/arm/masked_sad_neon.c"
-              "${AOM_ROOT}/aom_dsp/arm/masked_sad4d_neon.c"
               "${AOM_ROOT}/aom_dsp/arm/subpel_variance_neon.c"
               "${AOM_ROOT}/aom_dsp/arm/variance_neon.c"
               "${AOM_ROOT}/aom_dsp/arm/hadamard_neon.c"

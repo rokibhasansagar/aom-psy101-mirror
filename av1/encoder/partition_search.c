@@ -564,9 +564,11 @@ static void encode_superblock(const AV1_COMP *const cpi, TileDataEnc *tile_data,
                   (mbmi->skip_txfm || seg_skip) && is_inter_block(mbmi), xd);
   }
 
+#if !CONFIG_REALTIME_ONLY
   if (is_inter_block(mbmi) && !xd->is_chroma_ref && is_cfl_allowed(xd)) {
     cfl_store_block(xd, mbmi->bsize, mbmi->tx_size);
   }
+#endif
   if (!dry_run) {
     if (cpi->oxcf.pass == AOM_RC_ONE_PASS && cpi->svc.temporal_layer_id == 0 &&
         cpi->sf.rt_sf.use_temporal_noise_estimate &&
@@ -658,14 +660,7 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
   }
 
   if (cpi->oxcf.luma_bias != 0) {
-    int luma_avg;
-    BitDepthInfo bd_info = get_bit_depth_info(&x->e_mbd);
-    if (bd_info.use_highbitdepth_buf) {
-      // We bitshift if the bitdepth is > 8 to normalize the results to 0-255
-      luma_avg = av1_log_block_avg_hbd(x, bsize) >> (bd_info.bit_depth - 8);
-    } else {
-      luma_avg = av1_log_block_avg(x, bsize);
-    }
+    int luma_avg = av1_log_block_avg(x, bsize);
 
     double M1 = 2610.0 / 4096.0 / 4.0;
     double M2 = 2523.0 / 4096.0 * 128.0;

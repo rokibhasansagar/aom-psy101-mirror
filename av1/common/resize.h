@@ -33,36 +33,10 @@ void av1_resize_frame420(const uint8_t *y, int y_stride, const uint8_t *u,
                          const uint8_t *v, int uv_stride, int height, int width,
                          uint8_t *oy, int oy_stride, uint8_t *ou, uint8_t *ov,
                          int ouv_stride, int oheight, int owidth);
-bool av1_resize_frame422(const uint8_t *y, int y_stride, const uint8_t *u,
-                         const uint8_t *v, int uv_stride, int height, int width,
-                         uint8_t *oy, int oy_stride, uint8_t *ou, uint8_t *ov,
-                         int ouv_stride, int oheight, int owidth);
-bool av1_resize_frame444(const uint8_t *y, int y_stride, const uint8_t *u,
-                         const uint8_t *v, int uv_stride, int height, int width,
-                         uint8_t *oy, int oy_stride, uint8_t *ou, uint8_t *ov,
-                         int ouv_stride, int oheight, int owidth);
 
 void av1_highbd_resize_plane(const uint8_t *input, int height, int width,
                              int in_stride, uint8_t *output, int height2,
                              int width2, int out_stride, int bd);
-void av1_highbd_resize_frame420(const uint8_t *y, int y_stride,
-                                const uint8_t *u, const uint8_t *v,
-                                int uv_stride, int height, int width,
-                                uint8_t *oy, int oy_stride, uint8_t *ou,
-                                uint8_t *ov, int ouv_stride, int oheight,
-                                int owidth, int bd);
-void av1_highbd_resize_frame422(const uint8_t *y, int y_stride,
-                                const uint8_t *u, const uint8_t *v,
-                                int uv_stride, int height, int width,
-                                uint8_t *oy, int oy_stride, uint8_t *ou,
-                                uint8_t *ov, int ouv_stride, int oheight,
-                                int owidth, int bd);
-void av1_highbd_resize_frame444(const uint8_t *y, int y_stride,
-                                const uint8_t *u, const uint8_t *v,
-                                int uv_stride, int height, int width,
-                                uint8_t *oy, int oy_stride, uint8_t *ou,
-                                uint8_t *ov, int ouv_stride, int oheight,
-                                int owidth, int bd);
 
 void av1_upscale_normative_rows(const AV1_COMMON *cm, const uint8_t *src,
                                 int src_stride, uint8_t *dst, int dst_stride,
@@ -115,7 +89,7 @@ static inline int av1_superres_scaled(const AV1_COMMON *cm) {
 }
 
 // The optimized scaler av1_resize_and_extend_frame() can only handle scaling
-// ratios >= 1/4 and <= 16. See comment in aom_convolve8_c() for detail.
+// ratios >= 1/4 and <= 16. See comment in aom_scaled_2d_c() for detail.
 // Visual assessment shows that if the scaling ratio or its reciprocal is not a
 // multiple of 1/16, there are some artifacts in the output of the optimized
 // scaler, especially on lines, due to non-exact ratio representation. SSSE3
