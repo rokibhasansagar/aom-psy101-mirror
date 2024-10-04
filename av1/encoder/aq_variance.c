@@ -89,9 +89,9 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
   }
 }
 
-int av1_log_block_avg(MACROBLOCK *x, BLOCK_SIZE bs) {
+float av1_log_block_avg(MACROBLOCK *x, BLOCK_SIZE bs) {
   // This function returns the block average of luma block
-  unsigned int sum = 0, avg = 0, num_pix = 0;
+  unsigned int sum = 0, num_pix = 0;
   const int bw = MI_SIZE * mi_size_wide[bs];
   const int bh = MI_SIZE * mi_size_high[bs];
   const uint16_t *x16 = CONVERT_TO_SHORTPTR(x->plane[0].src.buf);
@@ -102,9 +102,7 @@ int av1_log_block_avg(MACROBLOCK *x, BLOCK_SIZE bs) {
       num_pix++;
     }
   }
-  if (num_pix != 0) {
-    avg = sum / num_pix;
-  }
+  float avg = (float)sum / num_pix;
   return avg;
 }
 

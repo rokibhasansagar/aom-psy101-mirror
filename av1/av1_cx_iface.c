@@ -930,7 +930,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   }
 
   RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
-  RANGE_CHECK_HI(extra_cfg, luma_bias, 15);
+  RANGE_CHECK_HI(extra_cfg, luma_bias, 999999999999999999);
 
 #if CONFIG_TUNE_VMAF
   RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
