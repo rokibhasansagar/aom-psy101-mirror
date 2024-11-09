@@ -1502,7 +1502,11 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   intra_mode_cfg->auto_intra_tools_off = extra_cfg->auto_intra_tools_off;
 
   // Set transform size/type configuration.
-  txfm_cfg->enable_tx64 = extra_cfg->enable_tx64;
+  if (oxcf->tune_cfg.content == AOM_CONTENT_PSY101){
+    txfm_cfg->enable_tx64 = 0;
+  } else {
+    txfm_cfg->enable_tx64 = extra_cfg->enable_tx64;
+  }
   txfm_cfg->enable_flip_idtx = extra_cfg->enable_flip_idtx;
   txfm_cfg->enable_rect_tx = extra_cfg->enable_rect_tx;
   txfm_cfg->reduced_tx_type_set = extra_cfg->reduced_tx_type_set;
