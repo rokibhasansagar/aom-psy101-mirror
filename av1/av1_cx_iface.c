@@ -1217,7 +1217,9 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->bit_depth = cfg->g_bit_depth;
   tool_cfg->cdef_control = (CDEF_CONTROL)extra_cfg->enable_cdef;
   tool_cfg->enable_restoration =
-      (cfg->g_usage == AOM_USAGE_REALTIME) ? 0 : extra_cfg->enable_restoration;
+      (cfg->g_usage == AOM_USAGE_REALTIME ||
+       oxcf->tune_cfg.content == AOM_CONTENT_PSY101 ||
+       extra_cfg->fast_decode > 1) ? 0 : extra_cfg->enable_restoration;
   tool_cfg->force_video_mode = extra_cfg->force_video_mode;
   tool_cfg->enable_palette = extra_cfg->enable_palette;
   // FIXME(debargha): Should this be:
