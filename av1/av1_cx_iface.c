@@ -939,7 +939,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
   RANGE_CHECK_HI(extra_cfg, ssim_vmaf_rd, 100);
 #endif
 
-  RANGE_CHECK_HI(extra_cfg, fast_decode, 2);
+  RANGE_CHECK_HI(extra_cfg, fast_decode, 3);
 
   return AOM_CODEC_OK;
 }
@@ -1257,7 +1257,7 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
 
   tool_cfg->error_resilient_mode =
       cfg->g_error_resilient | extra_cfg->error_resilient_mode;
-  if (extra_cfg->fast_decode == 2) {
+  if (extra_cfg->fast_decode > 2) {
     tool_cfg->frame_parallel_decoding_mode = 1;
   } else {
     tool_cfg->frame_parallel_decoding_mode =
