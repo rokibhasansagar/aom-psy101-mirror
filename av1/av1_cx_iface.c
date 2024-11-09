@@ -1228,7 +1228,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   // Disallow using temporal MVs while large_scale_tile = 1.
   tool_cfg->enable_ref_frame_mvs =
       extra_cfg->allow_ref_frame_mvs && !cfg->large_scale_tile;
-  tool_cfg->superblock_size = extra_cfg->superblock_size;
+  if (oxcf->tune_cfg.content == AOM_CONTENT_PSY101 ||
+      extra_cfg->fast_decode > 2) {
+    tool_cfg->superblock_size = AOM_SUPERBLOCK_SIZE_64X64;
+    extra_cfg->superblock_size = tool_cfg->superblock_size;
+  } else {
+    tool_cfg->superblock_size = extra_cfg->superblock_size;
+  }
   tool_cfg->enable_monochrome = cfg->monochrome;
   tool_cfg->full_still_picture_hdr = cfg->full_still_picture_hdr != 0;
   tool_cfg->enable_dual_filter = extra_cfg->enable_dual_filter;
