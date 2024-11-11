@@ -1319,7 +1319,8 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   q_cfg->quant_b_adapt = extra_cfg->quant_b_adapt;
   q_cfg->enable_chroma_deltaq = extra_cfg->enable_chroma_deltaq;
   q_cfg->aq_mode = extra_cfg->aq_mode;
-  if (oxcf->passes == 2 && tune_cfg->content == AOM_CONTENT_PSY101) {
+  if ((oxcf->passes == 2 || oxcf->mode == ALLINTRA) &&
+      tune_cfg->content == AOM_CONTENT_PSY101) {
     q_cfg->deltaq_mode = DELTA_Q_PERCEPTUAL;
   } else {
     q_cfg->deltaq_mode = extra_cfg->deltaq_mode;
