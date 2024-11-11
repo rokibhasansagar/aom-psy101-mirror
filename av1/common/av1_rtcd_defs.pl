@@ -253,7 +253,7 @@ specialize "av1_round_shift_array", qw/sse4_1 neon/;
 
 # Resize functions.
 add_proto qw/void av1_resize_and_extend_frame/, "const YV12_BUFFER_CONFIG *src, YV12_BUFFER_CONFIG *dst, const InterpFilter filter, const int phase, const int num_planes";
-specialize qw/av1_resize_and_extend_frame ssse3 neon/;
+specialize qw/av1_resize_and_extend_frame ssse3 neon neon_dotprod neon_i8mm/;
 
 #
 # Encoder functions below this point.
@@ -285,12 +285,6 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
                                                             const MV *const mv, uint8_t *comp_pred8, const uint8_t *pred8, int width,
                                                             int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref8, int ref_stride, int bd, int subpel_search";
     specialize qw/aom_highbd_comp_avg_upsampled_pred sse2 neon/;
-
-    add_proto qw/void aom_highbd_dist_wtd_comp_avg_upsampled_pred/, "MACROBLOCKD *xd, const struct AV1Common *const cm, int mi_row, int mi_col,
-                                                                const MV *const mv, uint8_t *comp_pred8, const uint8_t *pred8, int width,
-                                                                int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref8,
-                                                                int ref_stride, int bd, const DIST_WTD_COMP_PARAMS *jcp_param, int subpel_search";
-    specialize qw/aom_highbd_dist_wtd_comp_avg_upsampled_pred sse2 neon/;
   }
 
   # the transform coefficients are held in 32-bit

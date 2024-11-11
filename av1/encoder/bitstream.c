@@ -3115,6 +3115,7 @@ static inline void write_uncompressed_header_obu(
         if (!current_frame->frame_refs_short_signaling) {
           if (cpi->ppi->rtc_ref.set_ref_frame_config &&
               first_ref_map_idx != INVALID_IDX &&
+              cpi->svc.number_spatial_layers == 1 &&
               !seq_params->order_hint_info.enable_order_hint) {
             // For the usage of set_ref_frame_config:
             // for any reference not used set their ref_map_idx
@@ -3439,7 +3440,9 @@ int av1_write_uleb_obu_size(size_t obu_payload_size, uint8_t *dest,
   return AOM_CODEC_OK;
 }
 
-int av1_write_uleb_obu_size_unsafe(size_t obu_payload_size, uint8_t *dest) {
+// Deprecated. Use av1_write_uleb_obu_size() instead.
+static int av1_write_uleb_obu_size_unsafe(size_t obu_payload_size,
+                                          uint8_t *dest) {
   size_t coded_obu_size = 0;
 
   if (aom_uleb_encode(obu_payload_size, sizeof(uint32_t), dest,
