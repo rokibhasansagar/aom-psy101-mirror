@@ -1113,7 +1113,7 @@ typedef struct AV1EncoderConfig {
   BLOCK_SIZE vmaf_rd_bsize;
   unsigned int vmaf_rd_resize;
 
-  int fast_decode;
+  unsigned int fast_decode;
   /*!\endcond */
 } AV1EncoderConfig;
 

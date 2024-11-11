@@ -1547,7 +1547,7 @@ enum aome_enc_control_id {
    * settings set via SET_TILE_COLUMNS/ROWS. If the value is 0 no change is
    * done, the previous setting (if any) for tile_columns/rows is preserved.
    */
-  AV1E_SET_AUTO_TILES = 166,
+  AV1E_SET_AUTO_TILING = 166,
 
   /*!\brief Codec control to get the high motion content flag, used for
    * screen content realtime (RTC) encoding, int * parameter.
@@ -2265,8 +2265,8 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SVC_FRAME_DROP_MODE, unsigned int)
 AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, int)
 #define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR
 
-AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILES, unsigned int)
-#define AOM_CTRL_AV1E_SET_AUTO_TILES
+AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILING, unsigned int)
+#define AOM_CTRL_AV1E_SET_AUTO_TILING
 
 AOM_CTRL_USE_TYPE(AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC, int *)
 #define AOM_CTRL_AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC

@@ -321,8 +321,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "tile-columns", 1, "Number of tile columns to use, log2"),
   .tile_rows =
       ARG_DEF(NULL, "tile-rows", 1, "Number of tile rows to use, log2"),
-  .auto_tiles = ARG_DEF(NULL, "auto-tiles", 1,
-                        "Enable auto tiles (0: false (default), 1: true)"),
+  .auto_tiling = ARG_DEF(NULL, "auto-tiling", 1,
+                        "Higher value produces smaller and thus more tiles, "
+                        "which improves encode and decode threading "
+                        "(0..7), default is 3"),
   .enable_tpl_model = ARG_DEF(NULL, "enable-tpl-model", 1,
                               "RDO based on frame temporal dependency "
                               "(0: off, 1: backward source based); "
@@ -566,8 +568,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
                                   "(0: false (default), 1: true)"),
   .fast_decode =
       ARG_DEF(NULL, "fast-decode", 1,
-              "Improve ease of decoding the bitstream"
-              "(0: false (default), 1: level 1, 2: level 2)"),
+              "Improve ease of decoding the bitstream (0..3), default is 0"),
   .aq_mode = ARG_DEF(NULL, "aq-mode", 1,
                      "Adaptive quantization mode (0: off (default), 1: "
                      "variance 2: complexity, "

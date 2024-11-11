@@ -8,13 +8,13 @@
 
   - New Features
     * New codec controls:
-      * AV1E_SET_AUTO_TILES
+      * AV1E_SET_AUTO_TILING
       * AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC
       * AV1E_SET_POSTENCODE_DROP_RTC: Post encode frame drop feature.
       * AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR
     * New key-value pair for aom_codec_set_option():
-      * "auto-tiles": equivalent to the new codec control
-        AV1E_SET_AUTO_TILES.
+      * "auto-tiling": equivalent to the new codec control
+        AV1E_SET_AUTO_TILING.
 
   - Deprecated Features
     * Deprecated codec control:

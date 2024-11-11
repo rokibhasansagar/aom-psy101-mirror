@@ -44,7 +44,7 @@ class DatarateTest : public ::libaom_test::EncoderTest {
     denoiser_offon_period_ = -1;
     tile_columns_ = 0;
     tile_rows_ = 0;
-    auto_tiles_ = false;
+    auto_tiling_ = false;
     screen_mode_ = false;
     max_perc_spike_ = 1.0;
     max_perc_spike_high_ = 1.0;
@@ -64,8 +64,8 @@ class DatarateTest : public ::libaom_test::EncoderTest {
     if (video->frame() == 0) {
       encoder->Control(AOME_SET_CPUUSED, set_cpu_used_);
       encoder->Control(AV1E_SET_AQ_MODE, aq_mode_);
-      if (auto_tiles_) {
-        encoder->Control(AV1E_SET_AUTO_TILES, 1);
+      if (auto_tiling_) {
+        encoder->Control(AV1E_SET_AUTO_TILING, 1);
       } else {
         encoder->Control(AV1E_SET_TILE_COLUMNS, tile_columns_);
         encoder->Control(AV1E_SET_TILE_ROWS, tile_rows_);
@@ -213,7 +213,7 @@ class DatarateTest : public ::libaom_test::EncoderTest {
   bool speed_change_test_;
   int tile_columns_;
   int tile_rows_;
-  bool auto_tiles_;
+  unsigned int auto_tiling_;
   bool screen_mode_;
   double max_perc_spike_;
   double max_perc_spike_high_;

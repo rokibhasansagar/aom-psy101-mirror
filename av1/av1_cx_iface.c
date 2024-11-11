@@ -59,7 +59,7 @@ struct av1_extracfg {
   unsigned int fp_mt;
   unsigned int tile_columns;  // log2 number of tile columns
   unsigned int tile_rows;     // log2 number of tile rows
-  unsigned int auto_tiles;
+  unsigned int auto_tiling;
   unsigned int enable_tpl_model;
   unsigned int enable_keyframe_filtering;
   unsigned int arnr_max_frames;
@@ -218,7 +218,7 @@ struct av1_extracfg {
   int vmaf_preprocessing;
   unsigned int vmaf_rd_resize;
   unsigned int ssim_vmaf_rd;
-  int fast_decode;
+  unsigned int fast_decode;
 };
 
 static const struct av1_extracfg default_extra_cfg[] = {
@@ -235,7 +235,7 @@ static const struct av1_extracfg default_extra_cfg[] = {
       0,                       // fp_mt
       0,                       // tile_columns
       0,                       // tile_rows
-      0,                       // auto_tiles
+      3,                       // auto_tiling
       1,                       // enable_tpl_model
       1,                       // enable_keyframe_filtering
       15,                      // arnr_max_frames
@@ -395,7 +395,7 @@ static const struct av1_extracfg default_extra_cfg[] = {
       0,                   // fp_mt
       0,                   // tile_columns
       0,                   // tile_rows
-      0,                   // auto_tiles
+      3,                   // auto_tiling
       0,                   // enable_tpl_model
       0,                   // enable_keyframe_filtering
       15,                  // arnr_max_frames
@@ -766,7 +766,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
 
   RANGE_CHECK_HI(extra_cfg, tile_columns, 6);
   RANGE_CHECK_HI(extra_cfg, tile_rows, 6);
-  RANGE_CHECK_HI(extra_cfg, auto_tiles, 1);
+  RANGE_CHECK_HI(extra_cfg, auto_tiling, 7);
 
   RANGE_CHECK_HI(cfg, monochrome, 1);
 
@@ -1017,38 +1017,77 @@ static void disable_superres(SuperResCfg *const superres_cfg) {
   superres_cfg->superres_kf_qthresh = 255;
 }
 
-static void set_auto_tiles(TileConfig *const tile_cfg, unsigned int width,
-                           unsigned int height, unsigned int threads) {
-  int tile_cols_log2 = 0;
-  int tile_rows_log2 = 0;
-  if (threads < 2) return;
-  // Avoid small tiles because they are particularly bad for coding.
-  // Use no more tiles than the number of threads. Aim for one tile per
-  // thread. Using more than one thread inside one tile could be less
-  // efficient. Using more tiles than the number of threads would result
-  // in a compression penalty without much benefit.
-  const uint32_t kMinTileArea = 128 * 128;
-  const uint32_t kMaxTiles = 32;
-  uint32_t frame_area = width * height;
-  uint32_t tiles = (frame_area + kMinTileArea - 1) / kMinTileArea;
-  if (tiles > kMaxTiles) {
-    tiles = kMaxTiles;
+static unsigned int max_tiling_log2(unsigned int sb_units,
+                                    unsigned int min_sb_units) {
+  unsigned int max_log2 = 0;
+
+  for (unsigned int log2 = 0; log2 <= 6; log2++) {
+    // For log2 == 1, check all tiles for min SB unit limit
+    if (log2 == 1) {
+      unsigned int tile_width = (sb_units + (1 << log2) - 1) >> log2;
+      unsigned int residual_width = sb_units - tile_width;
+      if (tile_width < min_sb_units || residual_width < min_sb_units) {
+        break;
+      }
+      max_log2 = log2;
+      continue;
+    }
+    // For all other log2, check only non-residual tiles for min SB unit limit
+    unsigned int tile_size = (sb_units + (1 << log2) - 1) >> log2;
+    if (tile_size < min_sb_units) {
+      break;
+    }
+    max_log2 = log2;
   }
-  if (tiles > threads) {
-    tiles = threads;
+  return max_log2;
+}
+
+static void set_auto_tiling(TileConfig *const tile_cfg, unsigned int frame_width,
+                           unsigned int frame_height,
+                           aom_superblock_size_t sb_size,
+                           unsigned int auto_tiling) {
+  const unsigned int sb_shift =
+      (sb_size == AOM_SUPERBLOCK_SIZE_64X64)
+          ? MIN_SB_SIZE_LOG2 - 2
+          : MAX_SB_SIZE_LOG2 - 2;
+  const unsigned int mi_cols = (frame_width + MI_SIZE - 1) >> 2;
+  const unsigned int mi_rows = (frame_height + MI_SIZE - 1) >> 2;
+  const unsigned int sb_cols = (mi_cols + (1 << sb_shift) - 1) >> sb_shift;
+  const unsigned int sb_rows = (mi_rows + (1 << sb_shift) - 1) >> sb_shift;
+
+  // Minimum number of superblocks per tile dimension
+  unsigned int min_sb_units = 4;
+  switch (auto_tiling) {
+    case 1:
+      min_sb_units = 32;
+      break;
+    case 2:
+      min_sb_units = 24;
+      break;
+    case 3:
+      min_sb_units = 16;
+      break;
+    case 4:
+      min_sb_units = 12;
+      break;
+    case 5:
+      min_sb_units = 8;
+      break;
+    case 6:
+      min_sb_units = 6;
+      break;
+    case 7:
+      min_sb_units = 4;
+      break;
+    default:
+      return;
   }
-  int tiles_log2 = (int)log2(tiles);
-  // If the frame width is equal or greater than the height, use more tile
-  // columns than tile rows.
-  if (width >= height) {
-    tile_cols_log2 = (tiles_log2 + 1) / 2;
-    tile_rows_log2 = tiles_log2 - tile_cols_log2;
-  } else {
-    tile_rows_log2 = (tiles_log2 + 1) / 2;
-    tile_cols_log2 = tiles_log2 - tile_rows_log2;
+  if (sb_size == AOM_SUPERBLOCK_SIZE_128X128) {
+    min_sb_units >>= 1;
   }
-  tile_cfg->tile_columns = tile_cols_log2;
-  tile_cfg->tile_rows = tile_rows_log2;
+
+  tile_cfg->tile_columns = max_tiling_log2(sb_cols, min_sb_units);
+  tile_cfg->tile_rows = max_tiling_log2(sb_rows, min_sb_units);
 }
 
 static void update_default_encoder_config(const cfg_options_t *cfg,
@@ -1229,7 +1268,7 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   tool_cfg->enable_ref_frame_mvs =
       extra_cfg->allow_ref_frame_mvs && !cfg->large_scale_tile;
   if (oxcf->tune_cfg.content == AOM_CONTENT_PSY101 ||
-      extra_cfg->fast_decode > 2) {
+      extra_cfg->auto_tiling > 5) {
     tool_cfg->superblock_size = AOM_SUPERBLOCK_SIZE_64X64;
     extra_cfg->superblock_size = tool_cfg->superblock_size;
   } else {
@@ -1422,8 +1461,9 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   tile_cfg->enable_large_scale_tile = cfg->large_scale_tile;
   tile_cfg->enable_single_tile_decoding =
       (tile_cfg->enable_large_scale_tile) ? extra_cfg->single_tile_decoding : 0;
-  if (extra_cfg->auto_tiles) {
-    set_auto_tiles(tile_cfg, cfg->g_w, cfg->g_h, cfg->g_threads);
+  if (extra_cfg->auto_tiling > 0) {
+    set_auto_tiling(tile_cfg, cfg->g_w, cfg->g_h, tool_cfg->superblock_size,
+                   extra_cfg->auto_tiling);
     extra_cfg->tile_columns = tile_cfg->tile_columns;
     extra_cfg->tile_rows = tile_cfg->tile_rows;
   } else {
@@ -1816,10 +1856,10 @@ static aom_codec_err_t ctrl_set_row_mt(aom_codec_alg_priv_t *ctx,
 
 static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
                                              va_list args) {
-  // If the control AUTO_TILES is used (set to 1) then don't override
-  // the tile_columns set via the AUTO_TILES control.
-  if (ctx->extra_cfg.auto_tiles) {
-    ERROR("AUTO_TILES is set so AV1E_SET_TILE_COLUMNS should not be called.");
+  // If the control AUTO_TILING is used then don't override
+  // the tile_columns set via the AUTO_TILING control.
+  if (ctx->extra_cfg.auto_tiling) {
+    ERROR("AUTO_TILING is set so AV1E_SET_TILE_COLUMNS should not be called.");
   }
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   unsigned int tile_columns = CAST(AV1E_SET_TILE_COLUMNS, args);
@@ -1830,10 +1870,10 @@ static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
 
 static aom_codec_err_t ctrl_set_tile_rows(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
-  // If the control AUTO_TILES is used (set to 1) then don't override
-  // the tile_rows set via the AUTO_TILES control.
-  if (ctx->extra_cfg.auto_tiles) {
-    ERROR("AUTO_TILES is set so AV1E_SET_TILE_ROWS should not be called.");
+  // If the control AUTO_TILING is used then don't override
+  // the tile_rows set via the AUTO_TILING control.
+  if (ctx->extra_cfg.auto_tiling) {
+    ERROR("AUTO_TILING is set so AV1E_SET_TILE_ROWS should not be called.");
   }
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   unsigned int tile_rows = CAST(AV1E_SET_TILE_ROWS, args);
@@ -2794,12 +2834,12 @@ static aom_codec_err_t ctrl_set_svc_frame_drop_mode(aom_codec_alg_priv_t *ctx,
     return AOM_CODEC_OK;
 }
 
-static aom_codec_err_t ctrl_set_auto_tiles(aom_codec_alg_priv_t *ctx,
+static aom_codec_err_t ctrl_set_auto_tiling(aom_codec_alg_priv_t *ctx,
                                            va_list args) {
-  unsigned int auto_tiles = CAST(AV1E_SET_AUTO_TILES, args);
-  if (auto_tiles == ctx->extra_cfg.auto_tiles) return AOM_CODEC_OK;
+  unsigned int auto_tiling = CAST(AV1E_SET_AUTO_TILING, args);
+  if (auto_tiling == ctx->extra_cfg.auto_tiling) return AOM_CODEC_OK;
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
-  extra_cfg.auto_tiles = auto_tiles;
+  extra_cfg.auto_tiling = auto_tiling;
   return update_extra_cfg(ctx, &extra_cfg);
 }
 
@@ -4161,22 +4201,22 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_cols, argv,
                               err_string)) {
     extra_cfg.tile_columns = arg_parse_uint_helper(&arg, err_string);
-    if (extra_cfg.auto_tiles) {
+    if (extra_cfg.auto_tiling) {
       snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
-               "Cannot set tile-cols because auto-tiles is already set.");
+               "Cannot set tile-cols because auto-tiling is already set.");
       err = AOM_CODEC_INVALID_PARAM;
     }
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_rows, argv,
                               err_string)) {
     extra_cfg.tile_rows = arg_parse_uint_helper(&arg, err_string);
-    if (extra_cfg.auto_tiles) {
+    if (extra_cfg.auto_tiling) {
       snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
-               "Cannot set tile-rows because auto-tiles is already set.");
+               "Cannot set tile-rows because auto-tiling is already set.");
       err = AOM_CODEC_INVALID_PARAM;
     }
-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.auto_tiles, argv,
+  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.auto_tiling, argv,
                               err_string)) {
-    extra_cfg.auto_tiles = arg_parse_uint_helper(&arg, err_string);
+    extra_cfg.auto_tiling = arg_parse_uint_helper(&arg, err_string);
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tpl_model,
                               argv, err_string)) {
     extra_cfg.enable_tpl_model = arg_parse_uint_helper(&arg, err_string);
@@ -4842,7 +4882,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
   { AV1E_SET_BITRATE_ONE_PASS_CBR, ctrl_set_bitrate_one_pass_cbr },
   { AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, ctrl_set_max_consec_frame_drop_cbr },
   { AV1E_SET_SVC_FRAME_DROP_MODE, ctrl_set_svc_frame_drop_mode },
-  { AV1E_SET_AUTO_TILES, ctrl_set_auto_tiles },
+  { AV1E_SET_AUTO_TILING, ctrl_set_auto_tiling },
   { AV1E_SET_POSTENCODE_DROP_RTC, ctrl_set_postencode_drop_rtc },
   { AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR,
     ctrl_set_max_consec_frame_drop_ms_cbr },

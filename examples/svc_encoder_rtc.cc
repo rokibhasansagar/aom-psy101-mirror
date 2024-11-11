@@ -1689,7 +1689,7 @@ int main(int argc, const char **argv) {
   aom_codec_control(&codec, AV1E_SET_ENABLE_FILTER_INTRA, 0);
   aom_codec_control(&codec, AV1E_SET_INTRA_DEFAULT_TX_ONLY, 1);
 
-  aom_codec_control(&codec, AV1E_SET_AUTO_TILES, 1);
+  aom_codec_control(&codec, AV1E_SET_AUTO_TILING, 1);
 
   aom_codec_control(&codec, AV1E_SET_TUNE_CONTENT, app_input.tune_content);
   if (app_input.tune_content == AOM_CONTENT_SCREEN) {
