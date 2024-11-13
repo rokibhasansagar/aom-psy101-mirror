@@ -875,35 +875,34 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
 
   int dqpCb = 0;
   int dqpCr = 0;
-
-  // following section 8.3.2 in T-REC-H.Sup15 document
-  // to apply to AV1 qindex in the range of [0, 255]
-  if (enable_hdr_deltaq) {
-    dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
-    dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
-  }
-
-  // TODO(aomedia:2717): need to design better delta
-  if (enable_chroma_deltaq && !is_lossless_requested(&cpi->oxcf.rc_cfg)) {
-    // If chroma-deltaq is enabled, we apply these chroma q offsets:
-    // 420: 0, 422: +2, 444: +4
-    switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
-      case 0:
-        dqpCb += 4;
-        dqpCr += 4;
-        break;
-      case 1:
-        dqpCb += 2;
-        dqpCr += 2;
-        break;
-      default:
-        dqpCb += 0;
-        dqpCr += 0;
+  if (!is_lossless_requested(&cpi->oxcf.rc_cfg)) {
+    // following section 8.3.2 in T-REC-H.Sup15 document
+    // to apply to AV1 qindex in the range of [0, 255]
+    if (enable_hdr_deltaq) {
+      dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
+      dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
     }
-  }
 
-  if (dqpCb != dqpCr) {
-    cm->seq_params->separate_uv_delta_q = 1;
+    // TODO(aomedia:2717): need to design better delta
+    if (enable_chroma_deltaq) {
+      // If chroma-deltaq is enabled, we apply these chroma q offsets:
+      // 420: 0, 422: +2, 444: +4
+      switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
+        case 0:
+          dqpCb += 4;
+          dqpCr += 4;
+          break;
+        case 1:
+          dqpCb += 2;
+          dqpCr += 2;
+          break;
+        default: dqpCb += 0; dqpCr += 0;
+      }
+    }
+
+    if (dqpCb != dqpCr) {
+      cm->seq_params->separate_uv_delta_q = 1;
+    }
   }
 
   quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
