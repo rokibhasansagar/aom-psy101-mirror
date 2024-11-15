@@ -1135,6 +1135,8 @@ enum aome_enc_control_id {
    * - 2 = use modulation for local test
    * - 3 = use modulation for key frame perceptual quality optimization
    * - 4 = use modulation for user rating based perceptual quality optimization
+   * - 5 = use modulation for HDR video
+   * - 6 = use modulation for allintra using Variance Boost
    */
   AV1E_SET_DELTAQ_MODE = 107,
 
@@ -1696,7 +1698,10 @@ typedef enum {
  * options to be set (expressed as command-line options):
  *   * --enable-qm=1
  *   * --sharpness=7
+ *   * --dist-metric=qm-psnr
  *   * --enable-cdef=3
+ *   * --enable-chroma-deltaq=1
+ *   * --deltaq-mode=6
  */
 typedef enum {
   AOM_TUNE_PSNR = 0,
