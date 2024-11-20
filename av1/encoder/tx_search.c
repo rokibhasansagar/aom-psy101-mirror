@@ -1047,7 +1047,7 @@ static inline int64_t av1_block_error_qm(
   int i;
   int64_t error = 0, sqcoeff = 0;
   int shift = 2 * (bd - 8);
-  int rounding = shift > 0 ? 1 << (shift - 1) : 0;
+  int rounding = (1 << shift) >> 1;
 
   for (i = 0; i < block_size; i++) {
     int64_t weight = qmatrix[scan[i]];
@@ -1065,7 +1065,6 @@ static inline int64_t av1_block_error_qm(
     sqcoeff += (cc * cc + (1 << (2 * AOM_QM_BITS - 1))) >> (2 * AOM_QM_BITS);
   }
 
-  assert(error >= 0 && sqcoeff >= 0);
   error = (error + rounding) >> shift;
   sqcoeff = (sqcoeff + rounding) >> shift;
 
