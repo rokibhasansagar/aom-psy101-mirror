@@ -886,7 +886,6 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
       chroma_u_delta_q = adjust_hdr_cb_deltaq(quant_params->base_qindex);
       chroma_v_delta_q = adjust_hdr_cr_deltaq(quant_params->base_qindex);
     }
-
     if (is_allintra && tuning == AOM_TUNE_SSIMULACRA2) {
       if (cm->seq_params->subsampling_x == 1 &&
           cm->seq_params->subsampling_y == 1) {
@@ -938,10 +937,10 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
     if (chroma_u_delta_q != chroma_v_delta_q) {
       cm->seq_params->separate_uv_delta_q = 1;
     }
-    quant_params->u_dc_delta_q = chroma_dc_delta_q + chroma_u_delta_q;
-    quant_params->u_ac_delta_q = chroma_ac_delta_q + chroma_v_delta_q;
-    quant_params->v_dc_delta_q = chroma_dc_delta_q + chroma_u_delta_q;
-    quant_params->v_ac_delta_q = chroma_ac_delta_q + chroma_v_delta_q;
+    quant_params->u_dc_delta_q = chroma_u_delta_q + chroma_dc_delta_q;
+    quant_params->u_ac_delta_q = chroma_u_delta_q + chroma_ac_delta_q;
+    quant_params->v_dc_delta_q = chroma_v_delta_q + chroma_dc_delta_q;
+    quant_params->v_ac_delta_q = chroma_v_delta_q + chroma_ac_delta_q;
   }
 
   // Select the best QM formula based on whether we're encoding in allintra mode
