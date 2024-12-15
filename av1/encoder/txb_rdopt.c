@@ -12,6 +12,7 @@
 #include "av1/encoder/txb_rdopt.h"
 #include "av1/encoder/txb_rdopt_utils.h"
 
+#include "aom_ports/mem.h"
 #include "av1/common/idct.h"
 
 static inline void update_coeff_general(
@@ -345,13 +346,11 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   if (sharpness > 0) {
     rshift += sharpness - 1;
   }
-  const int rounding = (1 << rshift) >> 1;
 
-  const int64_t rdmult =
-      (((int64_t)x->rdmult *
-        (plane_rd_mult[is_inter][plane_type] << (2 * (xd->bd - 8)))) +
-       rounding) >>
-      rshift;
+  const int64_t rdmult = ROUND_POWER_OF_TWO(
+      (int64_t)x->rdmult *
+          (plane_rd_mult[is_inter][plane_type] << (2 * (xd->bd - 8))),
+      rshift);
 
   uint8_t levels_buf[TX_PAD_2D];
   uint8_t *const levels = set_levels(levels_buf, height);
