@@ -873,19 +873,12 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
   quant_params->base_qindex = AOMMAX(cm->delta_q_info.delta_q_present_flag, q);
   quant_params->y_dc_delta_q = 0;
 
-  // TODO(aomedia:2717): need to design better delta
   if (!is_lossless_requested(&cpi->oxcf.rc_cfg) && enable_chroma_deltaq) {
-    int chroma_u_delta_q = 0;
-    int chroma_v_delta_q = 0;
     int chroma_dc_delta_q = 0;
     int chroma_ac_delta_q = 0;
+    int chroma_u_delta_q = 0;
+    int chroma_v_delta_q = 0;
 
-    // following section 8.3.2 in T-REC-H.Sup15 document
-    // to apply to AV1 qindex in the range of [0, 255]
-    if (enable_hdr_deltaq) {
-      chroma_u_delta_q = adjust_hdr_cb_deltaq(quant_params->base_qindex);
-      chroma_v_delta_q = adjust_hdr_cr_deltaq(quant_params->base_qindex);
-    }
     if (is_allintra && tuning == AOM_TUNE_SSIMULACRA2) {
       if (cm->seq_params->subsampling_x == 1 &&
           cm->seq_params->subsampling_y == 1) {
@@ -899,8 +892,8 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
         // The ramp-down of chroma increase was determined by generating the
         // convex hull of SSIMULACRA 2 scores (for all boosts from 0-16), and
         // finding a linear equation that fits the convex hull.
-        chroma_dc_delta_q += -clamp((quant_params->base_qindex / 2) - 14, 0, 16);
-        chroma_ac_delta_q += chroma_dc_delta_q;
+        chroma_dc_delta_q = -clamp((quant_params->base_qindex / 2) - 14, 0, 16);
+        chroma_ac_delta_q = chroma_dc_delta_q;
       } else if (cm->seq_params->subsampling_x == 1 &&
                  cm->seq_params->subsampling_y == 0) {
         // 4:2:2 subsampling: Constant chroma AC delta_q increase (i.e. improved
@@ -936,26 +929,31 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
         // with no chroma delta_q (with a small efficiency improvement), while
         // encodes in the SSIMULACRA 2 <=90 range yield full benefits from this
         // adjustment.
-        chroma_dc_delta_q += 0;
-        chroma_ac_delta_q += clamp((quant_params->base_qindex / 2), 0, 24);
+        chroma_dc_delta_q = 0;
+        chroma_ac_delta_q = clamp((quant_params->base_qindex / 2), 0, 24);
+      }
+    } else {
+      // TODO(aomedia:2717): need to design better delta
+      // If chroma-deltaq is enabled, we apply these chroma q offsets:
+      // 420: 0, 422: +3, 444: +6
+      switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
+        case 0: chroma_dc_delta_q = chroma_ac_delta_q = 6; break;
+        case 1: chroma_dc_delta_q = chroma_ac_delta_q = 3; break;
+        default: chroma_dc_delta_q = chroma_ac_delta_q = 0;
       }
     }
-    // If chroma-deltaq is enabled, we apply these chroma q offsets:
-    // 420: 0, 422: +2, 444: +4
-    switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
-      case 0:
-        chroma_u_delta_q += 4;
-        chroma_v_delta_q += 4;
-        break;
-      case 1:
-        chroma_u_delta_q += 2;
-        chroma_v_delta_q += 2;
-        break;
-      default: chroma_u_delta_q += 0; chroma_v_delta_q += 0;
+
+    // following section 8.3.2 in T-REC-H.Sup15 document
+    // to apply to AV1 qindex in the range of [0, 255]
+    if (enable_hdr_deltaq) {
+      chroma_u_delta_q += adjust_hdr_cb_deltaq(quant_params->base_qindex);
+      chroma_v_delta_q += adjust_hdr_cr_deltaq(quant_params->base_qindex);
     }
+
     if (chroma_u_delta_q != chroma_v_delta_q) {
       cm->seq_params->separate_uv_delta_q = 1;
     }
+
     quant_params->u_dc_delta_q = chroma_u_delta_q + chroma_dc_delta_q;
     quant_params->u_ac_delta_q = chroma_u_delta_q + chroma_ac_delta_q;
     quant_params->v_dc_delta_q = chroma_v_delta_q + chroma_dc_delta_q;
