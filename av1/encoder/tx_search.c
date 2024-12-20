@@ -2027,8 +2027,6 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   MACROBLOCKD *xd = &x->e_mbd;
   MB_MODE_INFO *mbmi = xd->mi[0];
   const TxfmSearchParams *txfm_params = &x->txfm_search_params;
-  const AV1EncoderConfig *const oxcf = &cpi->oxcf;
-  const TuneCfg *tune_params = &oxcf->tune_cfg;
   int64_t best_rd = INT64_MAX;
   uint16_t best_eob = 0;
   TX_TYPE best_tx_type = DCT_DCT;
@@ -2108,10 +2106,8 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // Transform domain distortion is accurate for higher residuals.
   // TODO(any): Experiment with variance and mean based thresholds
   int use_transform_domain_distortion =
-      txfm_params->use_transform_domain_distortion > 0 &&
-      tune_params->content != AOM_CONTENT_PSY &&
-      tune_params->content != AOM_CONTENT_PSY101 &&
-      block_mse_q8 >= txfm_params->tx_domain_dist_threshold &&
+      (txfm_params->use_transform_domain_distortion > 0) &&
+      (block_mse_q8 >= txfm_params->tx_domain_dist_threshold) &&
       // Any 64-pt transforms only preserves half the coefficients.
       // Therefore transform domain distortion is not valid for these
       // transform sizes.
