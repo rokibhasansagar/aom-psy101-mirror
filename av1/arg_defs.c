@@ -288,8 +288,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .sharpness =
       ARG_DEF(NULL, "sharpness", 1,
               "Bias towards block sharpness in rate-distortion optimization of "
-              "transform coefficients and (in all intra mode only) reduce "
-              "block edge filtering for better sharpness (0..7), default is 0"),
+              "transform coefficients (0..7), default is 0"),
   .static_thresh =
       ARG_DEF(NULL, "static-thresh", 1, "Motion detection threshold"),
   .auto_altref =

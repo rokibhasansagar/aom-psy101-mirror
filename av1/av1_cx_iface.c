@@ -1918,9 +1918,12 @@ static aom_codec_err_t handle_tuning(aom_codec_alg_priv_t *ctx,
     extra_cfg->enable_qm = 1;
     extra_cfg->qm_min = QM_FIRST_SSIMULACRA2;
     extra_cfg->qm_max = QM_LAST_SSIMULACRA2;
-    // We can turn on loop filter sharpness, as frames do not have to serve as
-    // references to others.
-    extra_cfg->sharpness = 7;
+    // Higher sharpness biases trellis quantization towards keeping more
+    // coefficients, which together with the SSIMULACRA2 rdmult adjustment in
+    // av1_compute_rd_mult_based_on_qindex(), helps preserve image
+    // features (like repeating patterns and camera noise/film grain), which
+    // improves SSIMULACRA 2 scores.
+    extra_cfg->sharpness = 2;
     // Using the QM-PSNR metric was found to be beneficial for images (over the
     // default PSNR metric), as it correlates better with subjective image
     // quality consistency and better SSIMULACRA2 scores.

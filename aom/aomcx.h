@@ -239,10 +239,6 @@ enum aome_enc_control_id {
    *
    * Values 1-7 will avoid eob and skip block optimization and will change
    * rdmult in favor of block sharpness.
-   *
-   * In all-intra mode: it also sets the `loop_filter_sharpness` syntax element
-   * in the bitstream. Larger values increasingly reduce how much the filtering
-   * can change the sample values on block edges to favor perceived sharpness.
    */
   AOME_SET_SHARPNESS = AOME_SET_ENABLEAUTOALTREF + 2,  // 16
 
@@ -1699,7 +1695,7 @@ typedef enum {
  *   * --enable-qm=1
  *   * --qm-min=2
  *   * --qm-max=10
- *   * --sharpness=7
+ *   * --sharpness=2
  *   * --dist-metric=qm-psnr
  *   * --enable-cdef=3
  *   * --enable-chroma-deltaq=1
