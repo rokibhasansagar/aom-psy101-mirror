@@ -1349,11 +1349,7 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   // Set encoder algorithm related configuration.
   algo_cfg->enable_overlay = extra_cfg->enable_overlay;
   algo_cfg->disable_trellis_quant = extra_cfg->disable_trellis_quant;
-  if (extra_cfg->sharpness == 0 && tune_cfg->content == AOM_CONTENT_PSY101) {
-    algo_cfg->sharpness = 1;
-  } else {
-    algo_cfg->sharpness = extra_cfg->sharpness;
-  }
+  algo_cfg->sharpness = extra_cfg->sharpness;
   algo_cfg->arnr_max_frames = extra_cfg->arnr_max_frames;
   algo_cfg->arnr_strength = extra_cfg->arnr_strength;
   algo_cfg->cdf_update_mode = (uint8_t)extra_cfg->cdf_update_mode;
