@@ -783,43 +783,6 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
   av1_set_error_per_bit(&x->errorperbit, *rdmult);
 }
 
-// TODO(sdeng): replace them with the SIMD versions.
-static inline double highbd_image_sad_c(const uint16_t *src, int src_stride,
-                                        const uint16_t *ref, int ref_stride,
-                                        int w, int h) {
-  double accum = 0.0;
-  int i, j;
-
-  for (i = 0; i < h; ++i) {
-    for (j = 0; j < w; ++j) {
-      double img1px = src[i * src_stride + j];
-      double img2px = ref[i * ref_stride + j];
-
-      accum += fabs(img1px - img2px);
-    }
-  }
-
-  return accum / (double)(h * w);
-}
-
-static inline double image_sad_c(const uint8_t *src, int src_stride,
-                                 const uint8_t *ref, int ref_stride, int w,
-                                 int h) {
-  double accum = 0.0;
-  int i, j;
-
-  for (i = 0; i < h; ++i) {
-    for (j = 0; j < w; ++j) {
-      double img1px = src[i * src_stride + j];
-      double img2px = ref[i * ref_stride + j];
-
-      accum += fabs(img1px - img2px);
-    }
-  }
-
-  return accum / (double)(h * w);
-}
-
 static inline void get_neighbor_frames(const AV1_COMP *const cpi,
                                            const YV12_BUFFER_CONFIG **last,
                                            const YV12_BUFFER_CONFIG **next) {
