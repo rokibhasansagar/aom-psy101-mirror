@@ -17,61 +17,53 @@
 #include <cstdint>
 #include <memory>
 #else
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 #endif  // __cplusplus
 
 struct AV1_COMP;
 
-struct AV1LoopfilterLevel {
+typedef struct AomAV1LoopfilterLevel {
   int filter_level[2];
   int filter_level_u;
   int filter_level_v;
-};
+} AomAV1LoopfilterLevel;
 
-struct AV1CdefInfo {
+typedef struct AomAV1CdefInfo {
   int cdef_strength_y;
   int cdef_strength_uv;
   int damping;
-};
+} AomAV1CdefInfo;
 
-struct AV1SegmentationData {
+typedef struct AomAV1SegmentationData {
   const uint8_t *segmentation_map;
   size_t segmentation_map_size;
   const int *delta_q;
   size_t delta_q_size;
-};
+} AomAV1SegmentationData;
 
-enum FrameType { kKeyFrame, kInterFrame };
+typedef enum AomFrameType { kAomKeyFrame, kAomInterFrame } AomFrameType;
 
-struct AomAV1FrameParamsRTC {
-  enum FrameType frame_type;
+typedef struct AomAV1FrameParamsRTC {
+  AomFrameType frame_type;
   int spatial_layer_id;
   int temporal_layer_id;
+} AomAV1FrameParamsRTC;
+
+typedef enum AomFrameDropDecision {
+  kAomFrameDropDecisionOk,    // Frame is encoded.
+  kAomFrameDropDecisionDrop,  // Frame is dropped.
+} AomFrameDropDecision;
+
+// These constants come from AV1 spec.
+enum {
+  kAomAV1MaxLayers = 32,
+  kAomAV1MaxTemporalLayers = 8,
+  kAomAV1MaxSpatialLayers = 4,
 };
 
-#ifdef __cplusplus
-enum class FrameDropDecision {
-  kOk,    // Frame is encoded.
-  kDrop,  // Frame is dropped.
-};
-// These constants come from AV1 spec.
-static constexpr size_t kAV1MaxLayers = 32;
-static constexpr size_t kAV1MaxTemporalLayers = 8;
-static constexpr size_t kAV1MaxSpatialLayers = 4;
-#else
-enum FrameDropDecision {
-  kFrameDropDecisionOk,    // Frame is encoded.
-  kFrameDropDecisionDrop,  // Frame is dropped.
-};
-// These constants come from AV1 spec.
-#define kAV1MaxLayers 32
-#define kAV1MaxTemporalLayers 8
-#define kAV1MaxSpatialLayers 4
-#endif  // __cplusplus
-
-struct AomAV1RateControlRtcConfig {
+typedef struct AomAV1RateControlRtcConfig {
 #ifdef __cplusplus
   AomAV1RateControlRtcConfig();
 #endif
@@ -94,24 +86,38 @@ struct AomAV1RateControlRtcConfig {
   int frame_drop_thresh;
   int max_consec_drop_ms;
   double framerate;
-  int layer_target_bitrate[kAV1MaxLayers];
-  int ts_rate_decimator[kAV1MaxTemporalLayers];
+  int layer_target_bitrate[kAomAV1MaxLayers];
+  int ts_rate_decimator[kAomAV1MaxTemporalLayers];
   int aq_mode;
   // Number of spatial layers
   int ss_number_layers;
   // Number of temporal layers
   int ts_number_layers;
-  int max_quantizers[kAV1MaxLayers];
-  int min_quantizers[kAV1MaxLayers];
-  int scaling_factor_num[kAV1MaxSpatialLayers];
-  int scaling_factor_den[kAV1MaxSpatialLayers];
-};
+  int max_quantizers[kAomAV1MaxLayers];
+  int min_quantizers[kAomAV1MaxLayers];
+  int scaling_factor_num[kAomAV1MaxSpatialLayers];
+  int scaling_factor_den[kAomAV1MaxSpatialLayers];
+} AomAV1RateControlRtcConfig;
+
+struct AomAV1RateControlRTC;
+typedef struct AomAV1RateControlRTC AomAV1RateControlRTC;
 
 #ifdef __cplusplus
 namespace aom {
 
+using AV1LoopfilterLevel = AomAV1LoopfilterLevel;
+using AV1CdefInfo = AomAV1CdefInfo;
+using AV1SegmentationData = AomAV1SegmentationData;
 using AV1FrameParamsRTC = AomAV1FrameParamsRTC;
 using AV1RateControlRtcConfig = AomAV1RateControlRtcConfig;
+
+using FrameType = AomFrameType;
+constexpr FrameType kKeyFrame = kAomKeyFrame;
+constexpr FrameType kInterFrame = kAomInterFrame;
+
+using FrameDropDecision = AomFrameDropDecision;
+constexpr FrameDropDecision kFrameDropDecisionOk = kAomFrameDropDecisionOk;
+constexpr FrameDropDecision kFrameDropDecisionDrop = kAomFrameDropDecisionDrop;
 
 class AV1RateControlRTC {
  public:
@@ -149,28 +155,30 @@ class AV1RateControlRTC {
 #ifdef __cplusplus
 extern "C" {
 #endif
-void *av1_ratecontrol_rtc_create(
-    const struct AomAV1RateControlRtcConfig *rc_cfg);
-void av1_ratecontrol_rtc_destroy(void *controller);
-bool av1_ratecontrol_rtc_update(
-    void *controller, const struct AomAV1RateControlRtcConfig *rc_cfg);
-int av1_ratecontrol_rtc_get_qp(void *controller);
+AomAV1RateControlRTC *av1_ratecontrol_rtc_create(
+    const AomAV1RateControlRtcConfig *rc_cfg);
+void av1_ratecontrol_rtc_destroy(AomAV1RateControlRTC *controller);
+bool av1_ratecontrol_rtc_update(AomAV1RateControlRTC *controller,
+                                const AomAV1RateControlRtcConfig *rc_cfg);
+int av1_ratecontrol_rtc_get_qp(const AomAV1RateControlRTC *controller);
 
-struct AV1LoopfilterLevel av1_ratecontrol_rtc_get_loop_filter_level(
-    void *controller);
-enum FrameDropDecision av1_ratecontrol_rtc_compute_qp(
-    void *controller, const struct AomAV1FrameParamsRTC *frame_params);
+AomAV1LoopfilterLevel av1_ratecontrol_rtc_get_loop_filter_level(
+    const AomAV1RateControlRTC *controller);
+AomFrameDropDecision av1_ratecontrol_rtc_compute_qp(
+    AomAV1RateControlRTC *controller, const AomAV1FrameParamsRTC *frame_params);
 
-void av1_ratecontrol_rtc_post_encode_update(void *controller,
+void av1_ratecontrol_rtc_post_encode_update(AomAV1RateControlRTC *controller,
                                             uint64_t encoded_frame_size);
 
 bool av1_ratecontrol_rtc_get_segmentation(
-    void *controller, struct AV1SegmentationData *segmentation_data);
+    const AomAV1RateControlRTC *controller,
+    AomAV1SegmentationData *segmentation_data);
 
-struct AV1CdefInfo av1_ratecontrol_rtc_get_cdef_info(void *controller);
+AomAV1CdefInfo av1_ratecontrol_rtc_get_cdef_info(
+    const AomAV1RateControlRTC *controller);
 
 void av1_ratecontrol_rtc_init_ratecontrol_config(
-    struct AomAV1RateControlRtcConfig *config);
+    AomAV1RateControlRtcConfig *config);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
