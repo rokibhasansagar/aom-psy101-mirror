@@ -1405,8 +1405,7 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   gf_cfg->max_gf_interval = extra_cfg->max_gf_interval;
   gf_cfg->gf_min_pyr_height = extra_cfg->gf_min_pyr_height;
   if (extra_cfg->gf_max_pyr_height == 5 &&
-      (tune_cfg->content == AOM_CONTENT_PSY ||
-       tune_cfg->content == AOM_CONTENT_PSY101 ||
+      (tune_cfg->content == AOM_CONTENT_PSY101 ||
        extra_cfg->fast_decode > 0)) {
     gf_cfg->gf_max_pyr_height = 4;
   } else {
