@@ -879,7 +879,7 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
     int chroma_u_delta_q = 0;
     int chroma_v_delta_q = 0;
 
-    if (is_allintra && tuning == AOM_TUNE_SSIMULACRA2) {
+    if (is_allintra && tuning == AOM_TUNE_IQ) {
       if (cm->seq_params->subsampling_x == 1 &&
           cm->seq_params->subsampling_y == 1) {
         // 4:2:0 subsampling: Constant chroma delta_q decrease (i.e. improved
@@ -966,9 +966,9 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
   int (*get_chroma_qmlevel)(int, int, int);
 
   if (is_allintra) {
-    if (tuning == AOM_TUNE_SSIMULACRA2) {
-      // Use luma QM formula specifically tailored for tune SSIMULACRA 2
-      get_luma_qmlevel = aom_get_qmlevel_luma_ssimulacra2;
+    if (tuning == AOM_TUNE_IQ) {
+      // Use luma QM formula specifically tailored for tune IQ
+      get_luma_qmlevel = aom_get_qmlevel_luma_iq;
 
       if (cm->seq_params->subsampling_x == 0 &&
           cm->seq_params->subsampling_y == 0) {
@@ -976,7 +976,7 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
         // compared to 4:2:0 (2x on each dimension). This means the encoder
         // should use lower chroma QM levels that more closely match the scaling
         // of an equivalent 4:2:0 chroma QM.
-        get_chroma_qmlevel = aom_get_qmlevel_444_chroma_ssimulacra2;
+        get_chroma_qmlevel = aom_get_qmlevel_444_chroma_iq;
       } else {
         // For all other chroma subsampling modes, use the all intra QM formula
         get_chroma_qmlevel = aom_get_qmlevel_allintra;
