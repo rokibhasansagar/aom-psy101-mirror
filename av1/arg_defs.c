@@ -345,7 +345,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       NULL, "enable-cdef", 1,
       "Enable the constrained directional enhancement filter (0: false "
       "(default), 1: true, 2: disable for non-reference frames, 3: enable "
-      "adaptively on frame qindex)"),
+      "adaptively based on frame qindex)"),
   .enable_restoration = ARG_DEF(NULL, "enable-restoration", 1,
                                 "Enable the loop restoration filter (0: false "
                                 "(default in realtime mode), "
@@ -735,6 +735,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "sb-qp-sweep", 1,
               "When set to 1, enable the superblock level qp sweep for a "
               "given lambda to minimize the rdcost."),
+  .enable_low_complexity_decode =
+      ARG_DEF(NULL, "enable-low-complexity-decode", 1,
+              "Enable low complexity decode (0: false (default), 1: true)"),
   .ssim_rd_mult = ARG_DEF(NULL, "ssim-rd-mult", 1,
               "Multiplier for SSIM rdmult "
               "(only active with tune ssim, defaults to 100)"),

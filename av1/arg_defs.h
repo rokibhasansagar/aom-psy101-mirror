@@ -240,6 +240,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t strict_level_conformance;
   arg_def_t kf_max_pyr_height;
   arg_def_t sb_qp_sweep;
+  arg_def_t enable_low_complexity_decode;
   arg_def_t ssim_rd_mult;
   arg_def_t luma_bias;
   arg_def_t fast_decode;

@@ -670,6 +670,7 @@ enum aome_enc_control_id {
    * - 0 = disable
    * - 1 = enable for all frames (default)
    * - 2 = disable for non-reference frames
+   * - 3 = enable adaptively based on frame qindex
    */
   AV1E_SET_ENABLE_CDEF = 58,
 
@@ -1575,26 +1576,31 @@ enum aome_enc_control_id {
    */
   AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR = 169,
 
+  /*!\brief Codec control to enable the low complexity decode mode. Value of
+   * zero means this mode is disabled.
+   */
+  AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE = 170,
+
   /*!\brief Control SSIM rdmult */
-  AOME_SET_SSIM_RD_MULT = 170,
+  AOME_SET_SSIM_RD_MULT = 171,
 
   /*!\brief Control luma bias */
-  AOME_SET_LUMA_BIAS = 171,
+  AOME_SET_LUMA_BIAS = 172,
 
   /*!\brief Control VMAF Quantization */
-  AOME_SET_VMAF_QUANTIZATION = 172,
+  AOME_SET_VMAF_QUANTIZATION = 173,
 
   /*!\brief Control VMAF Preprocessing */
-  AOME_SET_VMAF_PREPROCESSING = 173,
+  AOME_SET_VMAF_PREPROCESSING = 174,
 
   /*!\brief Control VMAF RD resize factor */
-  AOME_SET_VMAF_RD_RESIZE = 174,
+  AOME_SET_VMAF_RD_RESIZE = 175,
 
   /*!\brief Control the share of SSIM RD to replace VMAF RD */
-  AOME_SET_SSIM_VMAF_RD = 175,
+  AOME_SET_SSIM_VMAF_RD = 176,
 
   /*!\brief Improve decoding performance of the aomenc-generated bitstream */
-  AOME_SET_FAST_DECODE = 176,
+  AOME_SET_FAST_DECODE = 177,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -2299,6 +2305,9 @@ AOM_CTRL_USE_TYPE(AV1E_SET_POSTENCODE_DROP_RTC, int)
 
 AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR, int)
 #define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR
+
+AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE, unsigned int)
+#define AOM_CTRL_AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE
 
 AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
 #define AOM_CTRL_AOME_SET_SSIM_RD_MULT
