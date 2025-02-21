@@ -4251,19 +4251,9 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_cols, argv,
                               err_string)) {
     extra_cfg.tile_columns = arg_parse_uint_helper(&arg, err_string);
-    if (extra_cfg.auto_tiling) {
-      snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
-               "Cannot set tile-cols because auto-tiling is already set.");
-      err = AOM_CODEC_INVALID_PARAM;
-    }
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_rows, argv,
                               err_string)) {
     extra_cfg.tile_rows = arg_parse_uint_helper(&arg, err_string);
-    if (extra_cfg.auto_tiling) {
-      snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
-               "Cannot set tile-rows because auto-tiling is already set.");
-      err = AOM_CODEC_INVALID_PARAM;
-    }
   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.auto_tiling, argv,
                               err_string)) {
     extra_cfg.auto_tiling = arg_parse_uint_helper(&arg, err_string);
