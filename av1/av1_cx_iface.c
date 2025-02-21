@@ -1111,8 +1111,12 @@ static void set_auto_tiling(TileConfig *const tile_cfg, unsigned int frame_width
     min_sb_units >>= 1;
   }
 
-  tile_cfg->tile_columns = max_tiling_log2(sb_cols, min_sb_units);
-  tile_cfg->tile_rows = max_tiling_log2(sb_rows, min_sb_units);
+  if (tile_cfg->tile_columns == 0) {
+    tile_cfg->tile_columns = max_tiling_log2(sb_cols, min_sb_units);
+  }
+  if (tile_cfg->tile_rows == 0) {
+    tile_cfg->tile_rows = max_tiling_log2(sb_rows, min_sb_units);
+  }
 }
 
 static void update_default_encoder_config(const cfg_options_t *cfg,
@@ -1481,14 +1485,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
   tile_cfg->enable_large_scale_tile = cfg->large_scale_tile;
   tile_cfg->enable_single_tile_decoding =
       (tile_cfg->enable_large_scale_tile) ? extra_cfg->single_tile_decoding : 0;
+  tile_cfg->tile_columns = extra_cfg->tile_columns;
+  tile_cfg->tile_rows = extra_cfg->tile_rows;
   if (extra_cfg->auto_tiling > 0) {
     set_auto_tiling(tile_cfg, cfg->g_w, cfg->g_h, tool_cfg->superblock_size,
-                   extra_cfg->auto_tiling);
+                    extra_cfg->auto_tiling);
     extra_cfg->tile_columns = tile_cfg->tile_columns;
     extra_cfg->tile_rows = tile_cfg->tile_rows;
-  } else {
-    tile_cfg->tile_columns = extra_cfg->tile_columns;
-    tile_cfg->tile_rows = extra_cfg->tile_rows;
   }
   tile_cfg->tile_width_count = AOMMIN(cfg->tile_width_count, MAX_TILE_COLS);
   tile_cfg->tile_height_count = AOMMIN(cfg->tile_height_count, MAX_TILE_ROWS);
@@ -1876,11 +1879,6 @@ static aom_codec_err_t ctrl_set_row_mt(aom_codec_alg_priv_t *ctx,
 
 static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
                                              va_list args) {
-  // If the control AUTO_TILING is used then don't override
-  // the tile_columns set via the AUTO_TILING control.
-  if (ctx->extra_cfg.auto_tiling) {
-    ERROR("AUTO_TILING is set so AV1E_SET_TILE_COLUMNS should not be called.");
-  }
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   unsigned int tile_columns = CAST(AV1E_SET_TILE_COLUMNS, args);
   if (tile_columns == extra_cfg.tile_columns) return AOM_CODEC_OK;
@@ -1890,11 +1888,6 @@ static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
 
 static aom_codec_err_t ctrl_set_tile_rows(aom_codec_alg_priv_t *ctx,
                                           va_list args) {
-  // If the control AUTO_TILING is used then don't override
-  // the tile_rows set via the AUTO_TILING control.
-  if (ctx->extra_cfg.auto_tiling) {
-    ERROR("AUTO_TILING is set so AV1E_SET_TILE_ROWS should not be called.");
-  }
   struct av1_extracfg extra_cfg = ctx->extra_cfg;
   unsigned int tile_rows = CAST(AV1E_SET_TILE_ROWS, args);
   if (tile_rows == extra_cfg.tile_rows) return AOM_CODEC_OK;
