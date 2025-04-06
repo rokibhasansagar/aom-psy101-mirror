@@ -49,6 +49,7 @@ static const struct arg_enum_list tuning_enum[] = {
   { "butteraugli", AOM_TUNE_BUTTERAUGLI },
   { "vmaf_saliency_map", AOM_TUNE_VMAF_SALIENCY_MAP },
   { "iq", AOM_TUNE_IQ },
+  { "ssimulacra2", AOM_TUNE_SSIMULACRA2 },
   { "image_perceptual_quality", AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY },
   { NULL, 0 }
 };
@@ -288,7 +289,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
   .sharpness =
       ARG_DEF(NULL, "sharpness", 1,
               "Bias towards block sharpness in rate-distortion optimization of "
-              "transform coefficients (0..7), default is 0"),
+              "transform coefficients and (in all intra mode only) reduce "
+              "block edge filtering for better sharpness (0..7), default is 0"),
   .static_thresh =
       ARG_DEF(NULL, "static-thresh", 1, "Motion detection threshold"),
   .auto_altref =
@@ -310,7 +312,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
       ARG_DEF(NULL, "max-intra-rate", 1, "Max I-frame bitrate (pct)"),
 #if CONFIG_AV1_ENCODER
   .cpu_used_av1 = ARG_DEF(NULL, "cpu-used", 1,
-                          "Speed setting (0..9 in good mode, 5..11 in realtime "
+                          "Speed setting (0..9 in good mode, 5..12 in realtime "
                           "mode, 0..9 in all intra mode), default in good mode is 4"),
   .rowmtarg =
       ARG_DEF(NULL, "row-mt", 1,
