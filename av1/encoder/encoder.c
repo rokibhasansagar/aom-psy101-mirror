@@ -775,8 +775,9 @@ void av1_change_config_seq(struct AV1_PRIMARY *ppi,
   // Init sequence level coding tools
   // This should not be called after the first key frame.
   // Note that for SVC encoding the sequence parameters
-  // (operating_points_cnt_minus_1, operating_point_idc[]) should be updated
-  // whenever the number of layers is changed. This is done in the
+  // (operating_points_cnt_minus_1, operating_point_idc[],
+  // has_nonzero_operating_point_idc) should be updated whenever the
+  // number of layers is changed. This is done in the
   // ctrl_set_svc_params().
   if (!ppi->seq_params_locked) {
     seq_params->operating_points_cnt_minus_1 =
@@ -2284,7 +2285,12 @@ void av1_set_frame_size(AV1_COMP *cpi, int width, int height) {
       if (av1_is_scaled(sf)) aom_extend_frame_borders(&buf->buf, num_planes);
     }
   }
-  if (!frame_is_intra_only(cm) && !has_valid_ref_frame) {
+  // For 1 pass CBR mode: we can skip this check for spatial enhancement
+  // layer if the target_bandwidth is zero, since it will be dropped.
+  const bool dropped_frame =
+      has_no_stats_stage(cpi) && cpi->oxcf.rc_cfg.mode == AOM_CBR &&
+      cpi->svc.spatial_layer_id > 0 && cpi->oxcf.rc_cfg.target_bandwidth == 0;
+  if (!frame_is_intra_only(cm) && !has_valid_ref_frame && !dropped_frame) {
     aom_internal_error(
         cm->error, AOM_CODEC_CORRUPT_FRAME,
         "Can't find at least one reference frame with valid size");
@@ -3008,10 +3014,6 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
                        cm->seq_params->bit_depth, cpi->oxcf.algo_cfg.sharpness);
 
     av1_set_variance_partition_thresholds(cpi, q, 0);
-
-    // printf("Frame %d/%d: q = %d, frame_type = %d superres_denom = %d\n",
-    //        cm->current_frame.frame_number, cm->show_frame, q,
-    //        cm->current_frame.frame_type, cm->superres_scale_denominator);
 
     if (loop_count == 0) {
       av1_setup_frame(cpi);
