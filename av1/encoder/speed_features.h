@@ -484,9 +484,12 @@ typedef struct HIGH_LEVEL_SPEED_FEATURES {
   int allow_sub_blk_me_in_tf;
 
   /*!
-   * Enable/disable temporal mv prediction.
+   * Decide whether to disable temporal mv prediction.
+   * 0: Do not disable
+   * 1: Conditionally disable
+   * 2: Always disable
    */
-  int disable_ref_frame_mvs;
+  int ref_frame_mvs_lvl;
 } HIGH_LEVEL_SPEED_FEATURES;
 
 /*!
@@ -831,6 +834,11 @@ typedef struct PARTITION_SPEED_FEATURES {
 
   // Disables 8x8 and below partitions for low quantizers.
   int disable_8x8_part_based_on_qidx;
+
+  // Decoder side speed feature to add penalty for use of smaller partitions.
+  // Takes values 0 - 2, 0 indicating no penalty and higher level indicating
+  // increased penalty.
+  int split_partition_penalty_level;
 } PARTITION_SPEED_FEATURES;
 
 typedef struct MV_SPEED_FEATURES {
@@ -894,6 +902,21 @@ typedef struct MV_SPEED_FEATURES {
 
   // Allow intrabc motion search
   int use_intrabc;
+
+  // Prune intrabc candidate block hash search
+  // 0: check every block hash candidate
+  // 1: check the first 64 block hash candidates only
+  int prune_intrabc_candidate_block_hash_search;
+
+  // Intrabc search level
+  // 0: top + left search
+  // 1: top search only
+  int intrabc_search_level;
+
+  // Whether the maximum intrabc block size to hash is 8x8
+  // 0: Hash from 4x4 up to superblock size
+  // 1: Hash 4x4 and 8x8 only
+  int hash_max_8x8_intrabc_blocks;
 
   // Whether to downsample the rows in sad calculation during motion search.
   // This is only active when there are at least 16 rows. When this sf is
@@ -1178,6 +1201,11 @@ typedef struct INTER_MODE_SPEED_FEATURES {
   // Speed 2: 2%  faster, 0.05% psnr loss.
   // No change for speed 3 and up, because |disable_onesided_comp| is true.
   int skip_arf_compound;
+
+  // Percentage of scaling used to increase the rd cost of warp mode so that
+  // encoder decisions are biased against local warp, favoring low complexity
+  // modes.
+  int bias_warp_mode_rd_scale_pct;
 } INTER_MODE_SPEED_FEATURES;
 
 typedef struct INTERP_FILTER_SPEED_FEATURES {
@@ -1524,6 +1552,15 @@ typedef struct LOOP_FILTER_SPEED_FEATURES {
   // adding a penalty of 1%
   int dual_sgr_penalty_level;
 
+  // Restricts loop restoration to RESTORE_SWITCHABLE by skipping RD cost
+  // comparisons for RESTORE_WIENER and RESTORE_SGRPROJ. Also applies a bias
+  // during switchable restoration search: each level adds a 0.5% penalty to
+  // Wiener and SGR selection.
+  // 0 : No restriction or bias (all restoration types allowed)
+  // 1+: Skip WIENER/SGRPROJ and apply (level x 0.5%) penalty in
+  // search_switchable()
+  int switchable_lr_with_bias_level;
+
   // prune sgr ep using binary search like mechanism
   int enable_sgr_ep_pruning;
 
@@ -1610,6 +1647,11 @@ typedef struct REAL_TIME_SPEED_FEATURES {
 
   // This flag controls the use of non-RD mode decision.
   int use_nonrd_pick_mode;
+
+  // Flag that controls discounting for color map cost during palette search.
+  // This saves about 5% of CPU and in non-RD speeds delivers better results
+  // across rtc_screen set (on speed 10 overall BDRate growth is 13%)
+  int discount_color_cost;
 
   // Use ALTREF frame in non-RD mode decision.
   int use_nonrd_altref_frame;
