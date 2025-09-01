@@ -441,7 +441,7 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
   specialize qw/av1_wedge_compute_delta_squares sse2 avx2 neon/;
 
   # hash
-  add_proto qw/uint32_t av1_get_crc32c_value/, "void *crc_calculator, uint8_t *p, size_t length";
+  add_proto qw/uint32_t av1_get_crc32c_value/, "void *crc_calculator, const uint8_t *p, size_t length";
   specialize qw/av1_get_crc32c_value sse4_2 arm_crc32/;
 
   if (aom_config("CONFIG_REALTIME_ONLY") ne "yes") {
@@ -557,6 +557,9 @@ specialize qw/av1_resize_horz_dir sse2 avx2/;
 if ((aom_config("CONFIG_REALTIME_ONLY") ne "yes") || (aom_config("CONFIG_AV1_DECODER") eq "yes")) {
   add_proto qw/void av1_warp_affine/, "const int32_t *mat, const uint8_t *ref, int width, int height, int stride, uint8_t *pred, int p_col, int p_row, int p_width, int p_height, int p_stride, int subsampling_x, int subsampling_y, ConvolveParams *conv_params, int16_t alpha, int16_t beta, int16_t gamma, int16_t delta";
   specialize qw/av1_warp_affine sse4_1 avx2 neon neon_i8mm sve/;
+  if (aom_config("CONFIG_HIGHWAY") eq "yes") {
+    specialize qw/av1_warp_affine avx512/;
+  }
 }
 
 # LOOP_RESTORATION functions

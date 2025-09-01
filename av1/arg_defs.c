@@ -291,6 +291,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
               "Bias towards block sharpness in rate-distortion optimization of "
               "transform coefficients and (in all intra mode only) reduce "
               "block edge filtering for better sharpness (0..7), default is 0"),
+  .enable_adaptive_sharpness =
+      ARG_DEF(NULL, "enable-adaptive-sharpness", 1,
+              "Enable adaptive sharpness (0: disabled (default), 1: enabled)"),
   .static_thresh =
       ARG_DEF(NULL, "static-thresh", 1, "Motion detection threshold"),
   .auto_altref =
@@ -588,7 +591,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
 
   .deltaq_strength = ARG_DEF(NULL, "deltaq-strength", 1,
                              "Deltaq strength for"
-                             " --deltaq-mode=4 (%)"),
+                             " --deltaq-mode=4 and --deltaq-mode=6 (%)"),
   .deltalf_mode = ARG_DEF(NULL, "delta-lf-mode", 1,
                           "Enable delta-lf-mode (0: off (default), 1: on)"),
   .frame_periodic_boost =

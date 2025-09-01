@@ -884,7 +884,8 @@ void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
   quant_params->base_qindex = AOMMAX(cm->delta_q_info.delta_q_present_flag, q);
   quant_params->y_dc_delta_q = 0;
 
-  if (!is_lossless_requested(&cpi->oxcf.rc_cfg) && enable_chroma_deltaq) {
+  // Disable deltaq in lossless mode.
+  if (enable_chroma_deltaq && !is_lossless_requested(&cpi->oxcf.rc_cfg)) {
     int chroma_dc_delta_q = 0;
     int chroma_ac_delta_q = 0;
     int chroma_u_delta_q = 0;

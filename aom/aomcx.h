@@ -244,7 +244,7 @@ enum aome_enc_control_id {
    * in the bitstream. Larger values increasingly reduce how much the filtering
    * can change the sample values on block edges to favor perceived sharpness.
    */
-   AOME_SET_SHARPNESS = AOME_SET_ENABLEAUTOALTREF + 2,  // 16
+  AOME_SET_SHARPNESS = AOME_SET_ENABLEAUTOALTREF + 2,  // 16
 
   /*!\brief Codec control function to set the threshold for MBs treated static,
    * unsigned int parameter
@@ -1409,7 +1409,8 @@ enum aome_enc_control_id {
    */
   AV1E_SET_SVC_REF_FRAME_COMP_PRED = 147,
 
-  /*!\brief Set --deltaq-mode strength.
+  /*!\brief Set --deltaq-mode strength, where the value is a percentage,
+   * unsigned int parameter.
    *
    * Valid range: [0, 1000]
    */
@@ -1602,26 +1603,42 @@ enum aome_enc_control_id {
    */
   AV1E_SET_SCREEN_CONTENT_DETECTION_MODE = 171,
 
+  /*!\brief Codec control to enable adaptive sharpness, which modulates
+   * sharpness based on frame QP, unsigned int parameter.
+   *
+   * Adaptive sharpness helps mitigate blocking artifacts in the low to medium
+   * quality range.
+   *
+   * - 0 = disable (default)
+   * - 1 = enable
+   *
+   * \note When adaptive sharpness is enabled, AOME_SET_SHARPNESS acts as a
+   * "maximum sharpness" value. Adaptive sharpness can still modulate effective
+   * sharpness between 0 and the maximum sharpness. As a consequence, adaptive
+   * sharpness only has effects when sharpness is greater than 0.
+   */
+  AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS = 172,
+
   /*!\brief Control SSIM rdmult */
-  AOME_SET_SSIM_RD_MULT = 172,
+  AOME_SET_SSIM_RD_MULT = 173,
 
   /*!\brief Control luma bias */
-  AOME_SET_LUMA_BIAS = 173,
+  AOME_SET_LUMA_BIAS = 174,
 
   /*!\brief Control VMAF Quantization */
-  AOME_SET_VMAF_QUANTIZATION = 174,
+  AOME_SET_VMAF_QUANTIZATION = 175,
 
   /*!\brief Control VMAF Preprocessing */
-  AOME_SET_VMAF_PREPROCESSING = 175,
+  AOME_SET_VMAF_PREPROCESSING = 176,
 
   /*!\brief Control VMAF RD resize factor */
-  AOME_SET_VMAF_RD_RESIZE = 176,
+  AOME_SET_VMAF_RD_RESIZE = 177,
 
   /*!\brief Control the share of SSIM RD to replace VMAF RD */
-  AOME_SET_SSIM_VMAF_RD = 177,
+  AOME_SET_SSIM_VMAF_RD = 178,
 
   /*!\brief Improve decoding performance of the aomenc-generated bitstream */
-  AOME_SET_FAST_DECODE = 178,
+  AOME_SET_FAST_DECODE = 179,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -1738,6 +1755,9 @@ typedef enum {
  *   * --enable-cdef=3
  *   * --enable-chroma-deltaq=1
  *   * --deltaq-mode=6
+ *   * --screen-detection-mode=2
+ * AOM_TUNE_IQ additionally sets the following options:
+ *   * --enable-adaptive-sharpness=1
  */
 typedef enum {
   AOM_TUNE_PSNR = 0,
@@ -2362,6 +2382,9 @@ AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE, unsigned int)
 AOM_CTRL_USE_TYPE(AV1E_SET_SCREEN_CONTENT_DETECTION_MODE,
                   int) /* aom_screen_detection_mode */
 #define AOM_CTRL_SET_SCREEN_CONTENT_DETECTION_MODE
+
+AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS, unsigned int)
+#define AOM_CTRL_AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS
 
 AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
 #define AOM_CTRL_AOME_SET_SSIM_RD_MULT
