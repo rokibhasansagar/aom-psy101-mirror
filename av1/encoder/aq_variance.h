@@ -22,8 +22,7 @@ extern "C" {
 #if !CONFIG_REALTIME_ONLY
 void av1_vaq_frame_setup(AV1_COMP *cpi);
 
-int av1_log_block_avg(const AV1_COMP *cpi, const MACROBLOCK *x, BLOCK_SIZE bs,
-                      int mi_row, int mi_col);
+float av1_log_block_avg(const MACROBLOCK *x, BLOCK_SIZE bs);
 int av1_compute_q_from_energy_level_deltaq_mode(const AV1_COMP *const cpi,
                                                 int block_var_level);
 int av1_block_wavelet_energy_level(const AV1_COMP *cpi, const MACROBLOCK *x,

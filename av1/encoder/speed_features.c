@@ -478,7 +478,7 @@ static void set_allintra_speed_features_framesize_independent(
     // For screen content, "prune_sgr_based_on_wiener = 2" cause large quality
     // loss.
     sf->lpf_sf.prune_sgr_based_on_wiener = allow_screen_content_tools ? 1 : 2;
-    sf->lpf_sf.disable_loop_restoration_chroma = 0;
+    sf->lpf_sf.disable_loop_restoration_chroma = 1;
     sf->lpf_sf.reduce_wiener_window_size = 1;
     sf->lpf_sf.prune_wiener_based_on_src_var = 2;
   }
@@ -1126,7 +1126,7 @@ static void set_good_speed_features_framesize_independent(
   sf->tx_sf.model_based_prune_tx_search_level = 1;
   sf->tx_sf.tx_type_search.use_reduced_intra_txset = 1;
 
-  sf->tpl_sf.search_method = NSTEP_8PT;
+  sf->tpl_sf.search_method = BIGDIA;
 
   sf->rt_sf.use_nonrd_pick_mode = 0;
   sf->rt_sf.discount_color_cost = 0;
@@ -1243,14 +1243,18 @@ static void set_good_speed_features_framesize_independent(
     sf->intra_sf.skip_filter_intra_in_inter_frames = 1;
 
     sf->tpl_sf.prune_starting_mv = 1;
-    sf->tpl_sf.search_method = DIAMOND;
+    sf->tpl_sf.search_method = FAST_BIGDIA;
 
     sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
     sf->rd_sf.use_mb_rd_hash = 1;
 
     sf->lpf_sf.prune_wiener_based_on_src_var = 1;
     sf->lpf_sf.prune_sgr_based_on_wiener = 1;
+<<<<<<<
     sf->lpf_sf.disable_loop_restoration_chroma = boosted ? 0 : 1;
+=======
+    sf->lpf_sf.reduce_wiener_window_size = boosted ? 0 : 1;
+>>>>>>>
 
     // TODO(any): Re-evaluate this feature set to 1 in speed 2.
     sf->tpl_sf.allow_compound_pred = 0;
@@ -1377,7 +1381,6 @@ static void set_good_speed_features_framesize_independent(
     sf->mv_sf.prune_mesh_search = PRUNE_MESH_SEARCH_LVL_2;
 
     sf->tpl_sf.subpel_force_stop = HALF_PEL;
-    sf->tpl_sf.search_method = FAST_BIGDIA;
     sf->tpl_sf.use_sad_for_mode_decision = 1;
 
     sf->tx_sf.tx_type_search.fast_intra_tx_type_search = 1;
@@ -2681,7 +2684,7 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
         (sf->inter_sf.use_dist_wtd_comp_flag != DIST_WTD_COMP_DISABLED);
     cpi->common.seq_params->enable_dual_filter &=
         !sf->interp_sf.disable_dual_filter;
-    // Set the flag 'enable_restoration', if one the Loop restoration filters
+    // Set the flag 'enable_restoration', if one of the Loop restoration filters
     // (i.e., Wiener or Self-guided) is enabled.
     cpi->common.seq_params->enable_restoration &=
         (!sf->lpf_sf.disable_wiener_filter || !sf->lpf_sf.disable_sgr_filter);

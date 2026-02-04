@@ -50,7 +50,8 @@ void av1_set_ssim_rdmult(const AV1_COMP *const cpi, int *errorperbit,
   assert(bsize_base >= BLOCK_8X8);
   assert(cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM ||
          cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
-         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2);
+         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
+         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY);
 
   for (row = mi_row / num_mi_w;
        row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
@@ -62,7 +63,7 @@ void av1_set_ssim_rdmult(const AV1_COMP *const cpi, int *errorperbit,
       num_of_mi += 1.0;
     }
   }
-  geom_mean_of_scale = pow(geom_mean_of_scale, (1.0 / num_of_mi));
+  geom_mean_of_scale = pow(geom_mean_of_scale * cpi->oxcf.ssim_rd_mult / 100.0, (1.0 / num_of_mi));
 
   *rdmult = (int)((double)(*rdmult) * geom_mean_of_scale + 0.5);
   *rdmult = AOMMAX(*rdmult, 0);
@@ -998,49 +999,6 @@ int av1_get_q_for_deltaq_objective(AV1_COMP *const cpi, ThreadData *td,
     *delta_dist += RDCOST(tpl_frame->base_rdmult, sbs_rate - srcrf_rate, 0);
   }
   return qindex;
-}
-
-#if !DISABLE_HDR_LUMA_DELTAQ
-// offset table defined in Table3 of T-REC-H.Sup15 document.
-static const int hdr_thres[HDR_QP_LEVELS + 1] = { 0,   301, 367, 434, 501, 567,
-                                                  634, 701, 767, 834, 1024 };
-
-static const int hdr10_qp_offset[HDR_QP_LEVELS] = { 3,  2,  1,  0,  -1,
-                                                    -2, -3, -4, -5, -6 };
-#endif
-
-int av1_get_q_for_hdr(AV1_COMP *const cpi, MACROBLOCK *const x,
-                      BLOCK_SIZE bsize, int mi_row, int mi_col) {
-  AV1_COMMON *const cm = &cpi->common;
-  assert(cm->seq_params->bit_depth == AOM_BITS_10);
-
-#if DISABLE_HDR_LUMA_DELTAQ
-  (void)x;
-  (void)bsize;
-  (void)mi_row;
-  (void)mi_col;
-  return cm->quant_params.base_qindex;
-#else
-  // calculate pixel average
-  const int block_luma_avg = av1_log_block_avg(cpi, x, bsize, mi_row, mi_col);
-  // adjust offset based on average of the pixel block
-  int offset = 0;
-  for (int i = 0; i < HDR_QP_LEVELS; i++) {
-    if (block_luma_avg >= hdr_thres[i] && block_luma_avg < hdr_thres[i + 1]) {
-      offset = (int)(hdr10_qp_offset[i] * QP_SCALE_FACTOR);
-      break;
-    }
-  }
-
-  const DeltaQInfo *const delta_q_info = &cm->delta_q_info;
-  offset = AOMMIN(offset, delta_q_info->delta_q_res * 9 - 1);
-  offset = AOMMAX(offset, -delta_q_info->delta_q_res * 9 + 1);
-  int qindex = cm->quant_params.base_qindex + offset;
-  qindex = AOMMIN(qindex, MAXQ);
-  qindex = AOMMAX(qindex, MINQ);
-
-  return qindex;
-#endif
 }
 #endif  // !CONFIG_REALTIME_ONLY
 

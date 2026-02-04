@@ -874,22 +874,25 @@ static int adjust_hdr_cr_deltaq(int base_qindex) {
   return dqpCr;
 }
 
-void av1_set_quantizer(AV1_COMMON *const cm, int min_qmlevel, int max_qmlevel,
+void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
                        int q, int enable_chroma_deltaq, int enable_hdr_deltaq,
                        bool is_allintra, aom_tune_metric tuning) {
   // quantizer has to be reinitialized with av1_init_quantizer() if any
   // delta_q changes.
+  AV1_COMMON *const cm = &cpi->common;
   CommonQuantParams *quant_params = &cm->quant_params;
   quant_params->base_qindex = AOMMAX(cm->delta_q_info.delta_q_present_flag, q);
   quant_params->y_dc_delta_q = 0;
 
   // Disable deltaq in lossless mode.
-  if (enable_chroma_deltaq && q) {
+  if (enable_chroma_deltaq && !is_lossless_requested(&cpi->oxcf.rc_cfg)) {
+    int chroma_dc_delta_q = 0;
+    int chroma_ac_delta_q = 0;
+    int chroma_u_delta_q = 0;
+    int chroma_v_delta_q = 0;
+
     if (is_allintra &&
         (tuning == AOM_TUNE_IQ || tuning == AOM_TUNE_SSIMULACRA2)) {
-      int chroma_dc_delta_q = 0;
-      int chroma_ac_delta_q = 0;
-
       if (cm->seq_params->subsampling_x == 1 &&
           cm->seq_params->subsampling_y == 1) {
         // 4:2:0 subsampling: Constant chroma delta_q decrease (i.e. improved
@@ -942,37 +945,32 @@ void av1_set_quantizer(AV1_COMMON *const cm, int min_qmlevel, int max_qmlevel,
         chroma_dc_delta_q = 0;
         chroma_ac_delta_q = clamp((quant_params->base_qindex / 2), 0, 24);
       }
-
-      // TODO: bug https://crbug.com/aomedia/375221136 - find chroma_delta_q
-      // values for 4:2:2 subsampling mode.
-      quant_params->u_dc_delta_q = chroma_dc_delta_q;
-      quant_params->u_ac_delta_q = chroma_ac_delta_q;
-      quant_params->v_dc_delta_q = chroma_dc_delta_q;
-      quant_params->v_ac_delta_q = chroma_ac_delta_q;
     } else {
       // TODO(aomedia:2717): need to design better delta
-      quant_params->u_dc_delta_q = 2;
-      quant_params->u_ac_delta_q = 2;
-      quant_params->v_dc_delta_q = 2;
-      quant_params->v_ac_delta_q = 2;
+      // If chroma-deltaq is enabled, we apply these chroma q offsets:
+      // 420: 0, 422: +3, 444: +6
+      switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
+        case 0: chroma_dc_delta_q = chroma_ac_delta_q = 6; break;
+        case 1: chroma_dc_delta_q = chroma_ac_delta_q = 3; break;
+        default: chroma_dc_delta_q = chroma_ac_delta_q = 0;
+      }
     }
-  } else {
-    quant_params->u_dc_delta_q = 0;
-    quant_params->u_ac_delta_q = 0;
-    quant_params->v_dc_delta_q = 0;
-    quant_params->v_ac_delta_q = 0;
-  }
 
-  // following section 8.3.2 in T-REC-H.Sup15 document
-  // to apply to AV1 qindex in the range of [0, 255]
-  if (enable_hdr_deltaq && q) {
-    int dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
-    int dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
-    quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
-    quant_params->v_dc_delta_q = quant_params->v_ac_delta_q = dqpCr;
-    if (dqpCb != dqpCr) {
+    // following section 8.3.2 in T-REC-H.Sup15 document
+    // to apply to AV1 qindex in the range of [0, 255]
+    if (enable_hdr_deltaq) {
+      chroma_u_delta_q += adjust_hdr_cb_deltaq(quant_params->base_qindex);
+      chroma_v_delta_q += adjust_hdr_cr_deltaq(quant_params->base_qindex);
+    }
+
+    if (chroma_u_delta_q != chroma_v_delta_q) {
       cm->seq_params->separate_uv_delta_q = 1;
     }
+
+    quant_params->u_dc_delta_q = chroma_u_delta_q + chroma_dc_delta_q;
+    quant_params->u_ac_delta_q = chroma_u_delta_q + chroma_ac_delta_q;
+    quant_params->v_dc_delta_q = chroma_v_delta_q + chroma_dc_delta_q;
+    quant_params->v_ac_delta_q = chroma_v_delta_q + chroma_ac_delta_q;
   }
 
   // Select the best luma and chroma QM formulas based on encoding mode and

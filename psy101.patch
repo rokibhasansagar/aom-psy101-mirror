@@ -1,0 +1,3342 @@
+ .gitignore                            |   1 +
+ CHANGELOG                             |   6 +-
+ README.md                             | 651 ++--------------------------------
+ aom/aomcx.h                           |  53 ++-
+ apps/aomenc.c                         |  16 +-
+ av1/arg_defs.c                        |  87 +++--
+ av1/arg_defs.h                        |   9 +-
+ av1/av1_cx_iface.c                    | 407 +++++++++++++++------
+ av1/common/quant_common.h             |   2 +-
+ av1/encoder/aq_variance.c             |  23 +-
+ av1/encoder/aq_variance.h             |   3 +-
+ av1/encoder/av1_quantize.c            |  58 ++-
+ av1/encoder/av1_quantize.h            |   2 +-
+ av1/encoder/encode_strategy.c         |   6 +-
+ av1/encoder/encodeframe.c             |   6 +-
+ av1/encoder/encodeframe_utils.c       |  48 +--
+ av1/encoder/encodeframe_utils.h       |   2 +-
+ av1/encoder/encoder.c                 |  39 +-
+ av1/encoder/encoder.h                 |  28 +-
+ av1/encoder/encoder_utils.c           |  94 ++++-
+ av1/encoder/firstpass.c               |   2 +-
+ av1/encoder/intra_mode_search.c       |   8 +-
+ av1/encoder/intra_mode_search_utils.h |   5 +-
+ av1/encoder/lookahead.h               |   4 +-
+ av1/encoder/partition_search.c        |  64 +++-
+ av1/encoder/pass2_strategy.c          |   5 +-
+ av1/encoder/speed_features.c          |  10 +-
+ av1/encoder/temporal_filter.h         |   2 +-
+ av1/encoder/tune_butteraugli.c        |   2 +-
+ av1/encoder/tune_vmaf.c               | 198 ++---------
+ av1/encoder/tune_vmaf.h               |   3 +
+ av1/encoder/tx_search.c               |   2 +-
+ av1/encoder/txb_rdopt.c               |  49 +--
+ common/webmenc.cc                     |   2 +-
+ examples/svc_encoder_rtc.cc           |   2 +-
+ test/datarate_test.h                  |   8 +-
+ test/svc_datarate_test.cc             |   6 +-
+ 37 files changed, 803 insertions(+), 1110 deletions(-)
+
+diff --git a/.gitignore b/.gitignore
+index 047373ec6..bc66a8966 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -7,3 +7,4 @@ cmbuild
+ .vscode
+ .gitignore
+ TAGS
++aom_build/
+diff --git a/CHANGELOG b/CHANGELOG
+index f2a3ad227..88fbde36a 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -233,13 +233,13 @@
+ 
+   - New Features
+     * New codec controls:
+-      * AV1E_SET_AUTO_TILES
++      * AV1E_SET_AUTO_TILING
+       * AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC
+       * AV1E_SET_POSTENCODE_DROP_RTC: Post encode frame drop feature.
+       * AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR
+     * New key-value pair for aom_codec_set_option():
+-      * "auto-tiles": equivalent to the new codec control
+-        AV1E_SET_AUTO_TILES.
++      * "auto-tiling": equivalent to the new codec control
++        AV1E_SET_AUTO_TILING.
+ 
+   - Deprecated Features
+     * Deprecated codec control:
+diff --git a/README.md b/README.md
+index f2141516c..cc1ae648b 100644
+--- a/README.md
++++ b/README.md
+@@ -1,51 +1,14 @@
+-README.md                {#LREADME}
++README.md
+ =========
+-# AV1 Codec Library
+-
+-## Contents
+-1. [Building the lib and applications](#building-the-library-and-applications)
+-    - [Prerequisites](#prerequisites)
+-    - [Get the code](#get-the-code)
+-    - [Basics](#basic-build)
+-    - [Configuration options](#configuration-options)
+-    - [Dylib builds](#dylib-builds)
+-    - [Debugging](#debugging)
+-    - [Cross compiling](#cross-compiling)
+-    - [Sanitizer support](#sanitizers)
+-    - [MSVC builds](#microsoft-visual-studio-builds)
+-    - [Xcode builds](#xcode-builds)
+-    - [Emscripten builds](#emscripten-builds)
+-    - [Extra Build Flags](#extra-build-flags)
+-    - [Build with VMAF support](#build-with-vmaf)
+-2. [Testing the library](#testing-the-av1-codec)
+-    - [Basics](#testing-basics)
+-        - [Unit tests](#unit-tests)
+-        - [Example tests](#example-tests)
+-        - [Encoder tests](#encoder-tests)
+-    - [IDE hosted tests](#ide-hosted-tests)
+-    - [Downloading test data](#downloading-the-test-data)
+-    - [Adding a new test data file](#adding-a-new-test-data-file)
+-    - [Additional test data](#additional-test-data)
+-    - [Sharded testing](#sharded-testing)
+-        - [Running tests directly](#running-test_libaom-directly)
+-        - [Running tests via CMake](#running-the-tests-via-the-cmake-build)
+-3. [Coding style](#coding-style)
+-4. [License header](#license-header)
+-5. [Submitting patches](#submitting-patches)
+-    - [Login cookie](#login-cookie)
+-    - [Contributor agreement](#contributor-agreement)
+-    - [Testing your code](#testing-your-code)
+-    - [Commit message hook](#commit-message-hook)
+-    - [Upload your change](#upload-your-change)
+-    - [Incorporating Reviewer Comments](#incorporating-reviewer-comments)
+-    - [Submitting your change](#submitting-your-change)
+-    - [Viewing change status](#viewing-the-status-of-uploaded-changes)
+-6. [Support](#support)
+-7. [Bug reports](#bug-reports)
+-
+-## Building the library and applications {#building-the-library-and-applications}
+-
+-### Prerequisites {#prerequisites}
++# another aom psy fork
++
++Contains selected patches from https://github.com/BlueSwordM/aom-av1-psy/tree/Endless_Possibility and
++its fork https://github.com/Clybius/aom-av1-lavish/tree/Endless_Instability, as well as original changes.
++
++
++## Building the library and applications
++
++### Prerequisites
+ 
+ 1. [CMake](https://cmake.org). See CMakeLists.txt for the minimum version
+    required.
+@@ -68,18 +31,15 @@ README.md                {#LREADME}
+ 7. Emscripten builds require the portable
+    [EMSDK](https://kripken.github.io/emscripten-site/index.html).
+ 
+-### Get the code {#get-the-code}
+-
+-The AV1 library source code is stored in the Alliance for Open Media Git
+-repository:
++### Get the code
+ 
+ ~~~
+-    $ git clone https://aomedia.googlesource.com/aom
+-    # By default, the above command stores the source in the aom directory:
+-    $ cd aom
++    $ git clone https://gitlab.com/damian101/aom-psy101.git
++    $ cd aom-psy101/
+ ~~~
+ 
+-### Basic build {#basic-build}
++
++### Basic build
+ 
+ CMake replaces the configure step typical of many projects. Running CMake will
+ produce configuration and build files for the currently selected CMake
+@@ -87,7 +47,7 @@ generator. For most systems the default generator is Unix Makefiles. The basic
+ form of a makefile build is the following:
+ 
+ ~~~
+-    $ cmake path/to/aom
++    $ cmake path/to/aom-psy101
+     $ make
+ ~~~
+ 
+@@ -97,7 +57,8 @@ successfully. The compiler chosen varies by host platform, but a general rule
+ applies: On systems where cc and c++ are present in $PATH at the time CMake is
+ run the generated build will use cc and c++ by default.
+ 
+-### Configuration options {#configuration-options}
++
++### Configuration options
+ 
+ The AV1 codec library has a great many configuration options. These come in two
+ varieties:
+@@ -106,10 +67,10 @@ varieties:
+  2. AV1 codec configuration options. These have the form `CONFIG_FEATURE`.
+ 
+ Both types of options are set at the time CMake is run. The following example
+-enables ccache and disables the AV1 encoder:
++enables ccache, disables unit tests and disables the AV1 decoder:
+ 
+ ~~~
+-    $ cmake path/to/aom -DENABLE_CCACHE=1 -DCONFIG_AV1_ENCODER=0
++    $ cmake path/to/aom-psy101 -DENABLE_CCACHE=1 -DENABLE_TESTS=0 -DCONFIG_AV1_DECODER=0
+     $ make
+ ~~~
+ 
+@@ -118,220 +79,15 @@ configuration options can be found at the top of the CMakeLists.txt file found
+ in the root of the AV1 repository, and AV1 codec configuration options can
+ currently be found in the file `build/cmake/aom_config_defaults.cmake`.
+ 
+-### Dylib builds {#dylib-builds}
+-
+-A dylib (shared object) build of the AV1 codec library can be enabled via the
+-CMake built in variable `BUILD_SHARED_LIBS`:
+-
+-~~~
+-    $ cmake path/to/aom -DBUILD_SHARED_LIBS=1
+-    $ make
+-~~~
+-
+-This is currently only supported on non-Windows targets.
+-
+-### Debugging {#debugging}
+-
+-Depending on the generator used there are multiple ways of going about
+-debugging AV1 components. For single configuration generators like the Unix
+-Makefiles generator, setting `CMAKE_BUILD_TYPE` to Debug is sufficient:
+-
+-~~~
+-    $ cmake path/to/aom -DCMAKE_BUILD_TYPE=Debug
+-~~~
+-
+-For Xcode, mainly because configuration controls for Xcode builds are buried two
+-configuration windows deep and must be set for each subproject within the Xcode
+-IDE individually, `CMAKE_CONFIGURATION_TYPES` should be set to Debug:
+-
+-~~~
+-    $ cmake path/to/aom -G Xcode -DCMAKE_CONFIGURATION_TYPES=Debug
+-~~~
+-
+-For Visual Studio the in-IDE configuration controls should be used. Simply set
+-the IDE project configuration to Debug to allow for stepping through the code.
+-
+-In addition to the above it can sometimes be useful to debug only C and C++
+-code. To disable all assembly code and intrinsics set `AOM_TARGET_CPU` to
+-generic at generation time:
+-
+-~~~
+-    $ cmake path/to/aom -DAOM_TARGET_CPU=generic
+-~~~
+-
+-### Cross compiling {#cross-compiling}
+-
+-For the purposes of building the AV1 codec and applications and relative to the
+-scope of this guide, all builds for architectures differing from the native host
+-architecture will be considered cross compiles. The AV1 CMake build handles
+-cross compiling via the use of toolchain files included in the AV1 repository.
+-The toolchain files available at the time of this writing are:
+-
+- - arm64-ios.cmake
+- - arm64-linux-clang.cmake
+- - arm64-linux-gcc.cmake
+- - arm64-mingw-gcc.cmake
+- - armv7-ios.cmake
+- - armv7-linux-gcc.cmake
+- - armv7-mingw-gcc.cmake
+- - armv7s-ios.cmake
+- - ppc-linux-gcc.cmake
+- - riscv-linux-gcc.cmake
+- - x86-ios-simulator.cmake
+- - x86-linux.cmake
+- - x86-macos.cmake
+- - x86-mingw-gcc.cmake
+- - x86\_64-ios-simulator.cmake
+- - x86\_64-mingw-gcc.cmake
+-
+-The following example demonstrates use of the x86-macos.cmake toolchain file on
+-a x86\_64 MacOS host:
+-
+-~~~
+-    $ cmake path/to/aom \
+-      -DCMAKE_TOOLCHAIN_FILE=path/to/aom/build/cmake/toolchains/x86-macos.cmake
+-    $ make
+-~~~
+-
+-To build for an unlisted target creation of a new toolchain file is the best
+-solution. The existing toolchain files can be used a starting point for a new
+-toolchain file since each one exposes the basic requirements for toolchain files
+-as used in the AV1 codec build.
+-
+-As a temporary work around an unoptimized AV1 configuration that builds only C
+-and C++ sources can be produced using the following commands:
+-
+-~~~
+-    $ cmake path/to/aom -DAOM_TARGET_CPU=generic
+-    $ make
+-~~~
+-
+-In addition to the above it's important to note that the toolchain files
+-suffixed with gcc behave differently than the others. These toolchain files
+-attempt to obey the $CROSS environment variable.
+-
+-### Sanitizers {#sanitizers}
+-
+-Sanitizer integration is built-in to the CMake build system. To enable a
+-sanitizer, add `-DSANITIZE=<type>` to the CMake command line. For example, to
+-enable address sanitizer:
+-
+-~~~
+-    $ cmake path/to/aom -DSANITIZE=address
+-    $ make
+-~~~
+-
+-Sanitizers available vary by platform, target, and compiler. Consult your
+-compiler documentation to determine which, if any, are available.
+-
+-### Microsoft Visual Studio builds {#microsoft-visual-studio-builds}
+-
+-Building the AV1 codec library in Microsoft Visual Studio is supported. Visual
+-Studio 2019 (16.0) or later is required. The following example demonstrates
+-generating projects and a solution for the Microsoft IDE:
+-
+-~~~
+-    # This does not require a bash shell; Command Prompt (cmd.exe) is fine.
+-    # This assumes the build host is a Windows x64 computer.
+-
+-    # To create a Visual Studio 2022 solution for the x64 target:
+-    $ cmake path/to/aom -G "Visual Studio 17 2022"
+ 
+-    # To create a Visual Studio 2022 solution for the 32-bit x86 target:
+-    $ cmake path/to/aom -G "Visual Studio 17 2022" -A Win32
+-
+-    # To create a Visual Studio 2019 solution for the x64 target:
+-    $ cmake path/to/aom -G "Visual Studio 16 2019"
+-
+-    # To create a Visual Studio 2019 solution for the 32-bit x86 target:
+-    $ cmake path/to/aom -G "Visual Studio 16 2019" -A Win32
+-
+-    # To build the solution:
+-    $ cmake --build .
+-~~~
+-
+-NOTE: The build system targets Windows 7 or later by compiling files with
+-`-D_WIN32_WINNT=0x0601`.
+-
+-### Xcode builds {#xcode-builds}
+-
+-Building the AV1 codec library in Xcode is supported. The following example
+-demonstrates generating an Xcode project:
+-
+-~~~
+-    $ cmake path/to/aom -G Xcode
+-~~~
+-
+-### Emscripten builds {#emscripten-builds}
+-
+-Building the AV1 codec library with Emscripten is supported. Typically this is
+-used to hook into the AOMAnalyzer GUI application. These instructions focus on
+-using the inspector with AOMAnalyzer, but all tools can be built with
+-Emscripten.
+-
+-It is assumed here that you have already downloaded and installed the EMSDK,
+-installed and activated at least one toolchain, and setup your environment
+-appropriately using the emsdk\_env script.
+-
+-1. Build [AOM Analyzer](https://github.com/xiph/aomanalyzer).
+-
+-2. Configure the build:
+-
+-~~~
+-    $ cmake path/to/aom \
+-        -DENABLE_CCACHE=1 \
+-        -DAOM_TARGET_CPU=generic \
+-        -DENABLE_DOCS=0 \
+-        -DENABLE_TESTS=0 \
+-        -DCONFIG_ACCOUNTING=1 \
+-        -DCONFIG_INSPECTION=1 \
+-        -DCONFIG_MULTITHREAD=0 \
+-        -DCONFIG_RUNTIME_CPU_DETECT=0 \
+-        -DCONFIG_WEBM_IO=0 \
+-        -DCMAKE_TOOLCHAIN_FILE=path/to/emsdk-portable/.../Emscripten.cmake
+-~~~
+-
+-3. Build it: run make if that's your generator of choice:
+-
+-~~~
+-    $ make inspect
+-~~~
+-
+-4. Run the analyzer:
+-
+-~~~
+-    # inspect.js is in the examples sub directory of the directory in which you
+-    # executed cmake.
+-    $ path/to/AOMAnalyzer path/to/examples/inspect.js path/to/av1/input/file
+-~~~
+-
+-### Extra build flags {#extra-build-flags}
+-
+-Three variables allow for passing of additional flags to the build system.
+-
+-- AOM\_EXTRA\_C\_FLAGS
+-- AOM\_EXTRA\_CXX\_FLAGS
+-- AOM\_EXTRA\_EXE\_LINKER\_FLAGS
+-
+-The build system attempts to ensure the flags passed through the above variables
+-are passed to tools last in order to allow for override of default behavior.
+-These flags can be used, for example, to enable asserts in a release build:
+-
+-~~~
+-    $ cmake path/to/aom \
+-        -DCMAKE_BUILD_TYPE=Release \
+-        -DAOM_EXTRA_C_FLAGS=-UNDEBUG \
+-        -DAOM_EXTRA_CXX_FLAGS=-UNDEBUG
+-~~~
+-
+-### Build with VMAF support {#build-with-vmaf}
++### Build with VMAF support
+ 
+ After installing
+ [libvmaf.a](https://github.com/Netflix/vmaf/tree/master/libvmaf),
+ you can use it with the encoder:
+ 
+ ~~~
+-    $ cmake path/to/aom -DCONFIG_TUNE_VMAF=1
++    $ cmake path/to/aom-psy101 -DCONFIG_TUNE_VMAF=1
+ ~~~
+ 
+ Please note that the default VMAF model
+@@ -342,365 +98,26 @@ will be used unless you set the following flag when running the encoder:
+     # --vmaf-model-path=path/to/model
+ ~~~
+ 
+-## Testing the AV1 codec {#testing-the-av1-codec}
+-
+-### Testing basics {#testing-basics}
+-
+-There are several methods of testing the AV1 codec. All of these methods require
+-the presence of the AV1 source code and a working build of the AV1 library and
+-applications.
+-
+-#### 1. Unit tests: {#unit-tests}
+-
+-The unit tests can be run at build time:
+-
+-~~~
+-    # Before running the make command the LIBAOM_TEST_DATA_PATH environment
+-    # variable should be set to avoid downloading the test files to the
+-    # cmake build configuration directory.
+-    $ cmake path/to/aom
+-    # Note: The AV1 CMake build creates many test targets. Running make
+-    # with multiple jobs will speed up the test run significantly.
+-    $ make runtests
+-~~~
+-
+-#### 2. Example tests: {#example-tests}
+-
+-The example tests require a bash shell and can be run in the following manner:
+-
+-~~~
+-    # See the note above about LIBAOM_TEST_DATA_PATH above.
+-    $ cmake path/to/aom
+-    $ make
+-    # It's best to build the testdata target using many make jobs.
+-    # Running it like this will verify and download (if necessary)
+-    # one at a time, which takes a while.
+-    $ make testdata
+-    $ path/to/aom/test/examples.sh --bin-path examples
+-~~~
+-
+-#### 3. Encoder tests: {#encoder-tests}
+-
+-When making a change to the encoder run encoder tests to confirm that your
+-change has a positive or negligible impact on encode quality. When running these
+-tests the build configuration should be changed to enable internal encoder
+-statistics:
+-
+-~~~
+-    $ cmake path/to/aom -DCONFIG_INTERNAL_STATS=1
+-    $ make
+-~~~
+-
+-The repository contains scripts intended to make running these tests as simple
+-as possible. The following example demonstrates creating a set of baseline clips
+-for comparison to results produced after making your change to libaom:
+-
+-~~~
+-    # This will encode all Y4M files in the current directory using the
+-    # settings specified to create the encoder baseline statistical data:
+-    $ cd path/to/test/inputs
+-    # This command line assumes that run_encodes.sh, its helper script
+-    # best_encode.sh, and the aomenc you intend to test are all within a
+-    # directory in your PATH.
+-    $ run_encodes.sh 200 500 50 baseline
+-~~~
+-
+-After making your change and creating the baseline clips, you'll need to run
+-encodes that include your change(s) to confirm that things are working as
+-intended:
+-
+-~~~
+-    # This will encode all Y4M files in the current directory using the
+-    # settings specified to create the statistical data for your change:
+-    $ cd path/to/test/inputs
+-    # This command line assumes that run_encodes.sh, its helper script
+-    # best_encode.sh, and the aomenc you intend to test are all within a
+-    # directory in your PATH.
+-    $ run_encodes.sh 200 500 50 mytweak
+-~~~
+-
+-After creating both data sets you can use `test/visual_metrics.py` to generate a
+-report that can be viewed in a web browser:
+-
+-~~~
+-    $ visual_metrics.py metrics_template.html "*stt" baseline mytweak \
+-      > mytweak.html
+-~~~
+-
+-You can view the report by opening mytweak.html in a web browser.
+-
+-
+-### IDE hosted tests {#ide-hosted-tests}
+-
+-By default the generated projects files created by CMake will not include the
+-runtests and testdata rules when generating for IDEs like Microsoft Visual
+-Studio and Xcode. This is done to avoid intolerably long build cycles in the
+-IDEs-- IDE behavior is to build all targets when selecting the build project
+-options in MSVS and Xcode. To enable the test rules in IDEs the
+-`ENABLE_IDE_TEST_HOSTING` variable must be enabled at CMake generation time:
+-
+-~~~
+-    # This example uses Xcode. To get a list of the generators
+-    # available, run cmake with the -G argument missing its
+-    # value.
+-    $ cmake path/to/aom -DENABLE_IDE_TEST_HOSTING=1 -G Xcode
+-~~~
+-
+-### Downloading the test data {#downloading-the-test-data}
+-
+-The fastest and easiest way to obtain the test data is to use CMake to generate
+-a build using the Unix Makefiles generator, and then to build only the testdata
+-rule. By default the test files will be downloaded to the current directory. The
+-`LIBAOM_TEST_DATA_PATH` environment variable can be used to set a
+-custom one.
+-
+-~~~
+-    $ cmake path/to/aom -G "Unix Makefiles"
+-    # 28 is used because there are 28 test files as of this writing.
+-    $ make -j28 testdata
+-~~~
+-
+-The above make command will only download and verify the test data.
+-
+-### Adding a new test data file {#adding-a-new-test-data-file}
+-
+-First, add the new test data file to the `aom-test-data` bucket of the
+-`aomedia-testing` project on Google Cloud Platform. You may need to ask someone
+-with the necessary access permissions to do this for you.
+-
+-NOTE: When a new test data file is added to the `aom-test-data` bucket, its
+-"Public access" is initially "Not public". We need to change its
+-"Public access" to "Public" by using the following
+-[`gsutil`](https://cloud.google.com/storage/docs/gsutil_install) command:
+-~~~
+-    $ gsutil acl ch -g all:R gs://aom-test-data/test-data-file-name
+-~~~
+-This command grants the `AllUsers` group READ access to the file named
+-"test-data-file-name" in the `aom-test-data` bucket.
+-
+-Once the new test data file has been added to `aom-test-data`, create a CL to
+-add the name of the new test data file to `test/test_data_util.cmake` and add
+-the SHA1 checksum of the new test data file to `test/test-data.sha1`. (The SHA1
+-checksum of a file can be calculated by running the `sha1sum` command on the
+-file.)
+-
+-### Additional test data {#additional-test-data}
+-
+-The test data mentioned above is strictly intended for unit testing.
+-
+-Additional input data for testing the encoder can be obtained from:
+-https://media.xiph.org/video/derf/
+-
+-### Sharded testing {#sharded-testing}
+-
+-The AV1 codec library unit tests are built upon gtest which supports sharding of
+-test jobs. Sharded test runs can be achieved in a couple of ways.
+-
+-#### 1. Running test\_libaom directly: {#running-test_libaom-directly}
+-
+-~~~
+-   # Set the environment variable GTEST_TOTAL_SHARDS to control the number of
+-   # shards.
+-   $ export GTEST_TOTAL_SHARDS=10
+-   # (GTEST shard indexing is 0 based).
+-   $ seq 0 $(( $GTEST_TOTAL_SHARDS - 1 )) \
+-       | xargs -n 1 -P 0 -I{} env GTEST_SHARD_INDEX={} ./test_libaom
+-~~~
+-
+-To create a test shard for each CPU core available on the current system set
+-`GTEST_TOTAL_SHARDS` to the number of CPU cores on your system minus one.
+-
+-#### 2. Running the tests via the CMake build: {#running-the-tests-via-the-cmake-build}
+-
+-~~~
+-    # For IDE based builds, ENABLE_IDE_TEST_HOSTING must be enabled. See
+-    # the IDE hosted tests section above for more information. If the IDE
+-    # supports building targets concurrently tests will be sharded by default.
+-
+-    # For make and ninja builds the -j parameter controls the number of shards
+-    # at test run time. This example will run the tests using 10 shards via
+-    # make.
+-    $ make -j10 runtests
+-~~~
+-
+-The maximum number of test targets that can run concurrently is determined by
+-the number of CPUs on the system where the build is configured as detected by
+-CMake. A system with 24 cores can run 24 test shards using a value of 24 with
+-the `-j` parameter. When CMake is unable to detect the number of cores 10 shards
+-is the default maximum value.
+-
+-## Coding style {#coding-style}
+-
+-We are using the Google C Coding Style defined by the
+-[Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html).
+-
+-The coding style used by this project is enforced with clang-format using the
+-configuration contained in the
+-[.clang-format](https://chromium.googlesource.com/webm/aom/+/main/.clang-format)
+-file in the root of the repository.
+-
+-You can download clang-format using your system's package manager, or directly
+-from [llvm.org](http://llvm.org/releases/download.html). You can also view the
+-[documentation](https://clang.llvm.org/docs/ClangFormat.html) on llvm.org.
+-Output from clang-format varies by clang-format version, for best results your
+-version should match the one used on Jenkins. You can find the clang-format
+-version by reading the comment in the `.clang-format` file linked above.
+-
+-Before pushing changes for review you can format your code with:
+-
+-~~~
+-    # Apply clang-format to modified .c, .h and .cc files
+-    $ clang-format -i --style=file \
+-      $(git diff --name-only --diff-filter=ACMR '*.[hc]' '*.cc')
+-~~~
+-
+-Check the .clang-format file for the version used to generate it if there is any
+-difference between your local formatting and the review system.
+-
+-Some Git installations have clang-format integration. Here are some examples:
+-
+-~~~
+-    # Apply clang-format to all staged changes:
+-    $ git clang-format
+-
+-    # Clang format all staged and unstaged changes:
+-    $ git clang-format -f
+-
+-    # Clang format all staged and unstaged changes interactively:
+-    $ git clang-format -f -p
+-~~~
+-
+-## License header {#license-header}
+-
+-Use the following comment block in new C/C++ source files, replacing "${year}"
+-with the current year. The same comment should be added to other file types,
+-adjusting the comment syntax as necessary.
+-
+-```
+-/*
+- * Copyright (c) ${year}, Alliance for Open Media. All rights reserved.
+- *
+- * This source code is subject to the terms of the BSD 2 Clause License and
+- * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
+- * was not distributed with this source code in the LICENSE file, you can
+- * obtain it at www.aomedia.org/license/software. If the Alliance for Open
+- * Media Patent License 1.0 was not distributed with this source code in the
+- * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
+- */
+-```
+-
+-## Submitting patches {#submitting-patches}
+-
+-We manage the submission of patches using the
+-[Gerrit](https://www.gerritcodereview.com/) code review tool. This tool
+-implements a workflow on top of the Git version control system to ensure that
+-all changes get peer reviewed and tested prior to their distribution.
+-
+-### Login cookie {#login-cookie}
+-
+-Browse to [AOMedia Git index](https://aomedia.googlesource.com/) and login with
+-your account (Gmail credentials, for example). Next, follow the
+-`Generate Password` Password link at the top of the page. You’ll be given
+-instructions for creating a cookie to use with our Git repos.
+-
+-You must also have a Gerrit account associated with your Google account. To do
+-this visit the [Gerrit review server](https://aomedia-review.googlesource.com)
+-and click "Sign in" (top right).
+-
+-### Contributor agreement {#contributor-agreement}
+-
+-You will be required to execute a
+-[contributor agreement](http://aomedia.org/license) to ensure that the AOMedia
+-Project has the right to distribute your changes.
+-
+-Note: If you are pushing changes on behalf of an Alliance for Open Media member
+-organization this step is not necessary.
+-
+-### Testing your code {#testing-your-code}
+-
+-The testing basics are covered in the [testing section](#testing-the-av1-codec)
+-above.
+-
+-In addition to the local tests, many more (e.g. asan, tsan, valgrind) will run
+-through Jenkins instances upon upload to gerrit.
+-
+-### Commit message hook {#commit-message-hook}
+-
+-Gerrit requires that each submission include a unique Change-Id. You can assign
+-one manually using git commit --amend, but it’s easier to automate it with the
+-commit-msg hook provided by Gerrit.
+-
+-Copy commit-msg to the `.git/hooks` directory of your local repo. Here's an
+-example:
+-
+-~~~
+-    $ curl -Lo aom/.git/hooks/commit-msg https://chromium-review.googlesource.com/tools/hooks/commit-msg
+-
+-    # Next, ensure that the downloaded commit-msg script is executable:
+-    $ chmod u+x aom/.git/hooks/commit-msg
+-~~~
+-
+-See the Gerrit
+-[documentation](https://gerrit-review.googlesource.com/Documentation/user-changeid.html)
+-for more information.
+-
+-### Upload your change {#upload-your-change}
+-
+-The command line to upload your patch looks like this:
+-
+-~~~
+-    $ git push https://aomedia-review.googlesource.com/aom HEAD:refs/for/main
+-~~~
+-
+-### Incorporating reviewer comments {#incorporating-reviewer-comments}
+-
+-If you previously uploaded a change to Gerrit and the Approver has asked for
+-changes, follow these steps:
+-
+-1. Edit the files to make the changes the reviewer has requested.
+-2. Recommit your edits using the --amend flag, for example:
+-
+-~~~
+-   $ git commit -a --amend
+-~~~
+-
+-3. Use the same git push command as above to upload to Gerrit again for another
+-   review cycle.
+-
+-In general, you should not rebase your changes when doing updates in response to
+-review. Doing so can make it harder to follow the evolution of your change in
+-the diff view.
+-
+-### Submitting your change {#submitting-your-change}
+-
+-Once your change has been Approved and Verified, you can “submit” it through the
+-Gerrit UI. This will usually automatically rebase your change onto the branch
+-specified.
+ 
+-Sometimes this can’t be done automatically. If you run into this problem, you
+-must rebase your changes manually:
++### Concrete building and installation example, for Linux
+ 
+ ~~~
+-    $ git fetch
+-    $ git rebase origin/branchname
++    $ git clone https://gitlab.com/damian101/aom-psy101 && cd aom-psy101/
++    $ mkdir aom_build && cd aom_build
++    $ cmake .. -DENABLE_TESTS=0 -DCONFIG_AV1_DECODER=0 -DENABLE_DOCS=0 -DCONFIG_TUNE_VMAF=1 -DCMAKE_CXX_FLAGS="-flto -O3 -march=native" -DCMAKE_C_FLAGS="-flto -O3 -march=native" && make -j 16
++    $ sudo cp aomenc /usr/bin/
+ ~~~
+ 
+-If there are any conflicts, resolve them as you normally would with Git. When
+-you’re done, reupload your change.
+ 
+-### Viewing the status of uploaded changes {#viewing-the-status-of-uploaded-changes}
++## Support
+ 
+-To check the status of a change that you uploaded, open
+-[Gerrit](https://aomedia-review.googlesource.com/), sign in, and click My >
+-Changes.
++This library is an open source project supported by the general AV1 enthusiast encoder community. Please send pull requests, feature requests and general comments on this repository.
++Other more miscalleneous discussions, contributions, and talks will be done elsewhere.
+ 
+-## Support {#support}
+ 
+-This library is an open source project supported by its community. Please
+-email av1-discuss@aomedia.org for help.
++## Bug reports
+ 
+-## Bug reports {#bug-reports}
++Bug reports can be filed in the Alliance for Open Media for general aomenc bugs
++[issue tracker](https://aomedia.issues.chromium.org/).
+ 
+-Bug reports can be filed in the Alliance for Open Media
+-[issue tracker](https://aomedia.issues.chromium.org/). For security reports,
+-select 'Security report' from the Template dropdown.
++As for the ones related to this fork itself, the issues tab can be used here on GitLab.
+diff --git a/aom/aomcx.h b/aom/aomcx.h
+index cae2a79ba..be14a62f6 100644
+--- a/aom/aomcx.h
++++ b/aom/aomcx.h
+@@ -503,6 +503,8 @@ enum aome_enc_control_id {
+    *  - AOM_CONTENT_DEFAULT = Regular video content (default)
+    *  - AOM_CONTENT_SCREEN  = Screen capture content
+    *  - AOM_CONTENT_FILM = Film content
++   *  - AOM_CONTENT_PSY = Psychovisual optimizations for video
++   *  - AOM_CONTENT_PSY101 = Further psychovisual optimizations for video
+    */
+   AV1E_SET_TUNE_CONTENT = 43,
+ 
+@@ -1563,7 +1565,7 @@ enum aome_enc_control_id {
+    * settings set via SET_TILE_COLUMNS/ROWS. If the value is 0 no change is
+    * done, the previous setting (if any) for tile_columns/rows is preserved.
+    */
+-  AV1E_SET_AUTO_TILES = 166,
++  AV1E_SET_AUTO_TILING = 166,
+ 
+   /*!\brief Codec control to get the high motion content flag, used for
+    * screen content realtime (RTC) encoding, int * parameter.
+@@ -1617,6 +1619,27 @@ enum aome_enc_control_id {
+    */
+   AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS = 172,
+ 
++  /*!\brief Control SSIM rdmult */
++  AOME_SET_SSIM_RD_MULT = 173,
++
++  /*!\brief Control luma bias */
++  AOME_SET_LUMA_BIAS = 174,
++
++  /*!\brief Control VMAF Quantization */
++  AOME_SET_VMAF_QUANTIZATION = 175,
++
++  /*!\brief Control VMAF Preprocessing */
++  AOME_SET_VMAF_PREPROCESSING = 176,
++
++  /*!\brief Control VMAF RD resize factor */
++  AOME_SET_VMAF_RD_RESIZE = 177,
++
++  /*!\brief Control the share of SSIM RD to replace VMAF RD */
++  AOME_SET_SSIM_VMAF_RD = 178,
++
++  /*!\brief Improve decoding performance of the aomenc-generated bitstream */
++  AOME_SET_FAST_DECODE = 179,
++
+   // Any new encoder control IDs should be added above.
+   // Maximum allowed encoder control ID is 229.
+   // No encoder control ID should be added below.
+@@ -1695,6 +1718,8 @@ typedef enum {
+   AOM_CONTENT_DEFAULT,
+   AOM_CONTENT_SCREEN,
+   AOM_CONTENT_FILM,
++  AOM_CONTENT_PSY,
++  AOM_CONTENT_PSY101,
+   AOM_CONTENT_INVALID
+ } aom_tune_content;
+ 
+@@ -1757,6 +1782,7 @@ typedef enum {
+   /* Tune that optimizes for maximum SSIMULACRA 2 scores. Shares the rdmult code
+      with AOM_TUNE_SSIM. */
+   AOM_TUNE_SSIMULACRA2 = 11,
++  AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY = 12,
+ } aom_tune_metric;
+ 
+ /*!\brief Distortion metric to use for RD optimization.
+@@ -2338,8 +2364,8 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SVC_FRAME_DROP_MODE, unsigned int)
+ AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, int)
+ #define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR
+ 
+-AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILES, unsigned int)
+-#define AOM_CTRL_AV1E_SET_AUTO_TILES
++AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILING, unsigned int)
++#define AOM_CTRL_AV1E_SET_AUTO_TILING
+ 
+ AOM_CTRL_USE_TYPE(AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC, int *)
+ #define AOM_CTRL_AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC
+@@ -2360,6 +2386,27 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SCREEN_CONTENT_DETECTION_MODE,
+ AOM_CTRL_USE_TYPE(AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS, unsigned int)
+ #define AOM_CTRL_AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS
+ 
++AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
++#define AOM_CTRL_AOME_SET_SSIM_RD_MULT
++
++AOM_CTRL_USE_TYPE(AOME_SET_LUMA_BIAS, int)
++#define AOM_CTRL_AOME_SET_LUMA_BIAS
++
++AOM_CTRL_USE_TYPE(AOME_SET_VMAF_QUANTIZATION, int)
++#define AOM_CTRL_AOME_SET_VMAF_QUANTIZATION
++
++AOM_CTRL_USE_TYPE(AOME_SET_VMAF_PREPROCESSING, int)
++#define AOM_CTRL_AOME_SET_VMAF_PREPROCESSING
++
++AOM_CTRL_USE_TYPE(AOME_SET_VMAF_RD_RESIZE, unsigned int)
++#define AOM_CTRL_AOME_SET_VMAF_RD_RESIZE
++
++AOM_CTRL_USE_TYPE(AOME_SET_SSIM_VMAF_RD, unsigned int)
++#define AOM_CTRL_AOME_SET_SSIM_VMAF_RD
++
++AOM_CTRL_USE_TYPE(AOME_SET_FAST_DECODE, int)
++#define AOM_CTRL_AOME_SET_FAST_DECODE
++
+ /*!\endcond */
+ /*! @} - end defgroup aom_encoder */
+ #ifdef __cplusplus
+diff --git a/apps/aomenc.c b/apps/aomenc.c
+index 3caae9098..5f5be7ce5 100644
+--- a/apps/aomenc.c
++++ b/apps/aomenc.c
+@@ -232,6 +232,10 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
+                                         AV1E_SET_CHROMA_SUBSAMPLING_Y,
+ #if CONFIG_TUNE_VMAF
+                                         AV1E_SET_VMAF_MODEL_PATH,
++                                        AOME_SET_VMAF_QUANTIZATION,
++                                        AOME_SET_VMAF_PREPROCESSING,
++                                        AOME_SET_VMAF_RD_RESIZE,
++                                        AOME_SET_SSIM_VMAF_RD,
+ #endif
+                                         AV1E_SET_DV_COST_UPD_FREQ,
+                                         AV1E_SET_PARTITION_INFO_PATH,
+@@ -242,6 +246,9 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
+                                         AV1E_ENABLE_RATE_GUIDE_DELTAQ,
+                                         AV1E_SET_RATE_DISTRIBUTION_INFO,
+                                         AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE,
++                                        AOME_SET_SSIM_RD_MULT,
++                                        AOME_SET_LUMA_BIAS,
++                                        AOME_SET_FAST_DECODE,
+                                         0 };
+ 
+ static const arg_def_t *const main_args[] = {
+@@ -444,6 +451,10 @@ static const arg_def_t *const av1_ctrl_args[] = {
+   &g_av1_codec_arg_defs.input_chroma_subsampling_y,
+ #if CONFIG_TUNE_VMAF
+   &g_av1_codec_arg_defs.vmaf_model_path,
++  &g_av1_codec_arg_defs.vmaf_quantization,
++  &g_av1_codec_arg_defs.vmaf_preprocessing,
++  &g_av1_codec_arg_defs.vmaf_rd_resize,
++  &g_av1_codec_arg_defs.ssim_vmaf_rd,
+ #endif
+   &g_av1_codec_arg_defs.dv_cost_upd_freq,
+   &g_av1_codec_arg_defs.partition_info_path,
+@@ -454,6 +465,9 @@ static const arg_def_t *const av1_ctrl_args[] = {
+   &g_av1_codec_arg_defs.enable_rate_guide_deltaq,
+   &g_av1_codec_arg_defs.rate_distribution_info,
+   &g_av1_codec_arg_defs.enable_low_complexity_decode,
++  &g_av1_codec_arg_defs.ssim_rd_mult,
++  &g_av1_codec_arg_defs.luma_bias,
++  &g_av1_codec_arg_defs.fast_decode,
+   NULL,
+ };
+ 
+@@ -466,7 +480,7 @@ static const arg_def_t *const av1_key_val_args[] = {
+   &g_av1_codec_arg_defs.sb_qp_sweep,
+   &g_av1_codec_arg_defs.dist_metric,
+   &g_av1_codec_arg_defs.kf_max_pyr_height,
+-  &g_av1_codec_arg_defs.auto_tiles,
++  &g_av1_codec_arg_defs.auto_tiling,
+   &g_av1_codec_arg_defs.screen_detection_mode,
+   &g_av1_codec_arg_defs.sharpness,
+   &g_av1_codec_arg_defs.enable_adaptive_sharpness,
+diff --git a/av1/arg_defs.c b/av1/arg_defs.c
+index 108656713..cd27b4a53 100644
+--- a/av1/arg_defs.c
++++ b/av1/arg_defs.c
+@@ -50,6 +50,7 @@ static const struct arg_enum_list tuning_enum[] = {
+   { "vmaf_saliency_map", AOM_TUNE_VMAF_SALIENCY_MAP },
+   { "iq", AOM_TUNE_IQ },
+   { "ssimulacra2", AOM_TUNE_SSIMULACRA2 },
++  { "image_perceptual_quality", AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY },
+   { NULL, 0 }
+ };
+ 
+@@ -103,6 +104,8 @@ static const struct arg_enum_list tune_content_enum[] = {
+   { "default", AOM_CONTENT_DEFAULT },
+   { "screen", AOM_CONTENT_SCREEN },
+   { "film", AOM_CONTENT_FILM },
++  { "psy", AOM_CONTENT_PSY },
++  { "psy101", AOM_CONTENT_PSY101 },
+   { NULL, 0 }
+ };
+ 
+@@ -199,7 +202,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+                                         "Chroma subsampling y value"),
+ 
+   .usage = ARG_DEF("u", "usage", 1,
+-                   "Usage profile number to use (0: good, 1: rt, 2: allintra)"),
++                   "Usage profile number to use (0: good (default), 1: rt, 2: allintra)"),
+   .threads = ARG_DEF("t", "threads", 1, "Max number of threads to use"),
+   .profile = ARG_DEF(NULL, "profile", 1, "Bitstream profile number to use"),
+   .width = ARG_DEF("w", "width", 1, "Frame width"),
+@@ -270,11 +273,12 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .maxsection_pct =
+       ARG_DEF(NULL, "maxsection-pct", 1, "GOP max bitrate (% of target)"),
+   .fwd_kf_enabled =
+-      ARG_DEF(NULL, "enable-fwd-kf", 1, "Enable forward reference keyframes"),
++      ARG_DEF(NULL, "enable-fwd-kf", 1, "Enable forward reference keyframes "
++              "(0: off (default), 1: on)"),
+   .kf_min_dist =
+-      ARG_DEF(NULL, "kf-min-dist", 1, "Minimum keyframe interval (frames)"),
++      ARG_DEF(NULL, "kf-min-dist", 1, "Minimum keyframe interval (frames), default is 12"),
+   .kf_max_dist =
+-      ARG_DEF(NULL, "kf-max-dist", 1, "Maximum keyframe interval (frames)"),
++      ARG_DEF(NULL, "kf-max-dist", 1, "Maximum keyframe interval (frames), default is 9999"),
+   .kf_disabled = ARG_DEF(NULL, "disable-kf", 0, "Disable keyframe placement"),
+   .sframe_dist = ARG_DEF(NULL, "sframe-dist", 1, "S-Frame interval (frames)"),
+   .sframe_mode =
+@@ -295,9 +299,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .auto_altref =
+       ARG_DEF(NULL, "auto-alt-ref", 1, "Enable automatic alt reference frames"),
+   .arnr_maxframes =
+-      ARG_DEF(NULL, "arnr-maxframes", 1, "AltRef max frames (0..15)"),
++      ARG_DEF(NULL, "arnr-maxframes", 1,
++              "AltRef max frames (0..15 (default))"),
+   .arnr_strength =
+-      ARG_DEF(NULL, "arnr-strength", 1, "AltRef filter strength (0..6)"),
++      ARG_DEF(NULL, "arnr-strength", 1,
++              "AltRef filter strength (0..4), default is 2"),
+   .tune_metric = ARG_DEF_ENUM(NULL, "tune", 1, "Distortion metric tuned with",
+                               tuning_enum),
+   .dist_metric = ARG_DEF_ENUM(
+@@ -309,8 +315,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       ARG_DEF(NULL, "max-intra-rate", 1, "Max I-frame bitrate (pct)"),
+ #if CONFIG_AV1_ENCODER
+   .cpu_used_av1 = ARG_DEF(NULL, "cpu-used", 1,
+-                          "Speed setting (0..6 in good mode, 5..12 in realtime "
+-                          "mode, 0..9 in all intra mode)"),
++                          "Speed setting (0..9 in good mode, 5..12 in realtime "
++                          "mode, 0..9 in all intra mode), default in good mode is 4"),
+   .rowmtarg =
+       ARG_DEF(NULL, "row-mt", 1,
+               "Enable row based multi-threading (0: off, 1: on (default))"),
+@@ -321,8 +327,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       ARG_DEF(NULL, "tile-columns", 1, "Number of tile columns to use, log2"),
+   .tile_rows =
+       ARG_DEF(NULL, "tile-rows", 1, "Number of tile rows to use, log2"),
+-  .auto_tiles = ARG_DEF(NULL, "auto-tiles", 1,
+-                        "Enable auto tiles (0: false (default), 1: true)"),
++  .auto_tiling = ARG_DEF(NULL, "auto-tiling", 1,
++                        "Higher value produces smaller and thus more tiles, "
++                        "which improves encode and decode threading "
++                        "(0..7), default is 3"),
+   .enable_tpl_model = ARG_DEF(NULL, "enable-tpl-model", 1,
+                               "RDO based on frame temporal dependency "
+                               "(0: off, 1: backward source based); "
+@@ -340,8 +348,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+                       "Lossless mode (0: false (default), 1: true)"),
+   .enable_cdef = ARG_DEF(
+       NULL, "enable-cdef", 1,
+-      "Enable the constrained directional enhancement filter (0: false, "
+-      "1: true (default), 2: disable for non-reference frames, 3: enable "
++      "Enable the constrained directional enhancement filter (0: false "
++      "(default), 1: true, 2: disable for non-reference frames, 3: enable "
+       "adaptively based on frame qindex)"),
+   .enable_restoration = ARG_DEF(NULL, "enable-restoration", 1,
+                                 "Enable the loop restoration filter (0: false "
+@@ -371,7 +379,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+                                 "(0: false, 1: true (default))"),
+   .enable_chroma_deltaq = ARG_DEF(NULL, "enable-chroma-deltaq", 1,
+                                   "Enable chroma delta quant "
+-                                  "(0: false (default), 1: true)"),
++                                  "(0: false, 1: true (default))"),
+   .enable_intra_edge_filter = ARG_DEF(NULL, "enable-intra-edge-filter", 1,
+                                       "Enable intra edge filtering "
+                                       "(0: false, 1: true (default))"),
+@@ -465,10 +473,10 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       "(default))"),
+   .enable_qm =
+       ARG_DEF(NULL, "enable-qm", 1,
+-              "Enable quantisation matrices (0: false (default), 1: true)"),
++              "Enable quantisation matrices (0: false, 1: true (default))"),
+   .qm_min = ARG_DEF(
+       NULL, "qm-min", 1,
+-      "Min quant matrix flatness (0..15), default is 5 (4 for all intra mode)"),
++      "Min quant matrix flatness (0..15), default is 0 (4 for all intra mode)"),
+   .qm_max = ARG_DEF(NULL, "qm-max", 1,
+                     "Max quant matrix flatness (0..15), default is 9 (10 for "
+                     "all intra mode)"),
+@@ -481,7 +489,8 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .use_intra_default_tx_only =
+       ARG_DEF(NULL, "use-intra-default-tx-only", 1,
+               "Use Default-transform only for INTRA modes"),
+-  .quant_b_adapt = ARG_DEF(NULL, "quant-b-adapt", 1, "Use adaptive quantize_b"),
++  .quant_b_adapt = ARG_DEF(NULL, "quant-b-adapt", 1, "Use adaptive quantize_b "
++                           "(0: false, 1: true (default))"),
+   .coeff_cost_upd_freq = ARG_DEF(NULL, "coeff-cost-upd-freq", 1,
+                                  "Update freq for coeff costs. "
+                                  "0: SB, 1: SB Row per Tile, 2: Tile, 3: Off"),
+@@ -508,6 +517,23 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+ #if CONFIG_TUNE_VMAF
+   .vmaf_model_path =
+       ARG_DEF(NULL, "vmaf-model-path", 1, "Path to the VMAF model file"),
++  .vmaf_quantization = ARG_DEF(NULL, "vmaf-quantization", 1,
++                               "Force instance of VMAF quantization ((0)..1)\n"
++                               "                                        0 - Off, 1 - On"),
++  .vmaf_preprocessing = ARG_DEF(NULL, "vmaf-preprocessing", 1,
++                                "Force instance of VMAF preprocessing ((0)..3)\n"
++                                "                                        0 - Off, "
++                                "1 - VMAF Block-based NEG, 2 - VMAF Block-based, "
++                                "3 - VMAF Frame-based"),
++  .vmaf_rd_resize = ARG_DEF(NULL, "vmaf-rd-resize", 1,
++                                   "Change internal resizing for VMAF RD "
++                                   "calculations\n "
++                                   "                                        "
++                                   "0 - Full res, 1 - Half res (Default), "
++                                   "2 - Quarter res, 3 - Eighth res."),
++  .ssim_vmaf_rd = ARG_DEF(NULL, "ssim-vmaf-rd", 1,
++                          "Control the share of SSIM RD to replace VMAF RD "
++                          "(in percent), default is 0"),
+ #endif
+   .partition_info_path = ARG_DEF(NULL, "partition-info-path", 1,
+                                  "Partition information read and write path"),
+@@ -532,11 +558,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       ARG_DEF(NULL, "denoise-noise-level", 1,
+               "Amount of noise (from 0 = don't denoise, to 50)"),
+   .denoise_block_size = ARG_DEF(NULL, "denoise-block-size", 1,
+-                                "Denoise block size (default = 32)"),
++                                "Denoise block size (default = 16)"),
+   .enable_dnl_denoising = ARG_DEF(NULL, "enable-dnl-denoising", 1,
+                                   "Apply denoising to the frame "
+                                   "being encoded when denoise-noise-level is "
+-                                  "enabled (0: false, 1: true (default))"),
++                                  "enabled (0: false (default), 1: true)"),
+ #endif
+   .enable_ref_frame_mvs =
+       ARG_DEF(NULL, "enable-ref-frame-mvs", 1,
+@@ -548,6 +574,9 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .error_resilient_mode = ARG_DEF(NULL, "error-resilient", 1,
+                                   "Enable error resilient features "
+                                   "(0: false (default), 1: true)"),
++  .fast_decode =
++      ARG_DEF(NULL, "fast-decode", 1,
++              "Improve ease of decoding the bitstream (0..3), default is 0"),
+   .aq_mode = ARG_DEF(NULL, "aq-mode", 1,
+                      "Adaptive quantization mode (0: off (default), 1: "
+                      "variance 2: complexity, "
+@@ -555,9 +584,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .deltaq_mode =
+       ARG_DEF(NULL, "deltaq-mode", 1,
+               "Delta qindex mode (0: off, 1: deltaq objective (default), "
+-              "2: deltaq placeholder, 3: key frame visual quality, 4: user "
+-              "rating based visual quality optimization, 5: HDR video, 6: "
+-              "Variance Boost all intra); requires --enable-tpl-model=1"),
++              "2: deltaq perceptual, 3: key frame visual quality, "
++              "4: user rating based visual quality optimization, "
++              "5: HDR optimization, 6: Variance Boost all intra); "
++              "deltaq modes 1/2 require --enable-tpl-model=1"),
++
+   .deltaq_strength = ARG_DEF(NULL, "deltaq-strength", 1,
+                              "Deltaq strength for"
+                              " --deltaq-mode=4 and --deltaq-mode=6 (%)"),
+@@ -578,13 +609,13 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       "Max gf/arf frame interval (default 0, indicating in-built behavior)"),
+   .gf_min_pyr_height =
+       ARG_DEF(NULL, "gf-min-pyr-height", 1,
+-              "Min height for GF group pyramid structure (0 (default) to 5)"),
++              "Min height for GF group pyramid structure (0..5), default is 0"),
+   .gf_max_pyr_height = ARG_DEF(
+       NULL, "gf-max-pyr-height", 1,
+-      "Maximum height for GF group pyramid structure (0 to 5 (default))"),
++      "Maximum height for GF group pyramid structure (0..5), default is 5"),
+   .max_reference_frames = ARG_DEF(NULL, "max-reference-frames", 1,
+                                   "Maximum number of reference frames allowed "
+-                                  "per frame (3 to 7 (default))"),
++                                  "per frame (3..7 (default))"),
+   .reduced_reference_set =
+       ARG_DEF(NULL, "reduced-reference-set", 1,
+               "Use reduced set of single and compound references (0: off "
+@@ -702,7 +733,7 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+   .kf_max_pyr_height = ARG_DEF(
+       NULL, "kf-max-pyr-height", 1,
+       "Maximum height of pyramid structure used for the GOP starting with a "
+-      "key frame (-1 to 5). When set to -1 (default), it does not have any "
++      "key frame (-1..5). When set to -1 (default), it does not have any "
+       "effect. The actual maximum pyramid height will be the minimum of this "
+       "value and the value of gf_max_pyr_height."),
+   .sb_qp_sweep =
+@@ -718,5 +749,11 @@ const av1_codec_arg_definitions_t g_av1_codec_arg_defs = {
+       ARG_DEF(NULL, "screen-detection-mode", 1,
+               "Screen content detection mode (1: standard (default), "
+               "2: anti-aliased text and graphics aware)"),
++  .ssim_rd_mult = ARG_DEF(NULL, "ssim-rd-mult", 1,
++              "Multiplier for SSIM rdmult "
++              "(only active with tune ssim, defaults to 100)"),
++  .luma_bias = ARG_DEF(NULL, "luma-bias", 1,
++                       "Apply luma RD bias to increase perceptual consistency "
++                       "(0..15), default is 0"),
+ #endif  // CONFIG_AV1_ENCODER
+ };
+diff --git a/av1/arg_defs.h b/av1/arg_defs.h
+index eb3c2f398..1b35d6937 100644
+--- a/av1/arg_defs.h
++++ b/av1/arg_defs.h
+@@ -125,7 +125,7 @@ typedef struct av1_codec_arg_definitions {
+   arg_def_t fpmtarg;
+   arg_def_t tile_cols;
+   arg_def_t tile_rows;
+-  arg_def_t auto_tiles;
++  arg_def_t auto_tiling;
+   arg_def_t enable_tpl_model;
+   arg_def_t enable_keyframe_filtering;
+   arg_def_t tile_width;
+@@ -185,6 +185,10 @@ typedef struct av1_codec_arg_definitions {
+   arg_def_t timing_info;
+ #if CONFIG_TUNE_VMAF
+   arg_def_t vmaf_model_path;
++  arg_def_t vmaf_quantization;
++  arg_def_t vmaf_preprocessing;
++  arg_def_t vmaf_rd_resize;
++  arg_def_t ssim_vmaf_rd;
+ #endif
+   arg_def_t partition_info_path;
+   arg_def_t enable_rate_guide_deltaq;
+@@ -239,6 +243,9 @@ typedef struct av1_codec_arg_definitions {
+   arg_def_t sb_qp_sweep;
+   arg_def_t enable_low_complexity_decode;
+   arg_def_t screen_detection_mode;
++  arg_def_t ssim_rd_mult;
++  arg_def_t luma_bias;
++  arg_def_t fast_decode;
+ #endif  // CONFIG_AV1_ENCODER
+ } av1_codec_arg_definitions_t;
+ 
+diff --git a/av1/av1_cx_iface.c b/av1/av1_cx_iface.c
+index b49c1aa6d..3cb1ecf30 100644
+--- a/av1/av1_cx_iface.c
++++ b/av1/av1_cx_iface.c
+@@ -60,7 +60,7 @@ struct av1_extracfg {
+   unsigned int fp_mt;
+   unsigned int tile_columns;  // log2 number of tile columns
+   unsigned int tile_rows;     // log2 number of tile rows
+-  unsigned int auto_tiles;
++  unsigned int auto_tiling;
+   unsigned int enable_tpl_model;
+   unsigned int enable_keyframe_filtering;
+   unsigned int arnr_max_frames;
+@@ -85,7 +85,7 @@ struct av1_extracfg {
+   unsigned int force_video_mode;
+   unsigned int enable_obmc;
+   unsigned int disable_trellis_quant;
+-  unsigned int enable_qm;
++  int enable_qm;
+   unsigned int qm_y;
+   unsigned int qm_u;
+   unsigned int qm_v;
+@@ -215,11 +215,18 @@ struct av1_extracfg {
+   int kf_max_pyr_height;
+   int sb_qp_sweep;
+   aom_screen_detection_mode screen_detection_mode;
++  int ssim_rd_mult;
++  unsigned int luma_bias;
++  int vmaf_quantization;
++  int vmaf_preprocessing;
++  unsigned int vmaf_rd_resize;
++  unsigned int ssim_vmaf_rd;
++  unsigned int fast_decode;
+ };
+ 
+ #if !CONFIG_REALTIME_ONLY
+ static const struct av1_extracfg default_extra_cfg = {
+-  0,              // cpu_used
++  4,              // cpu_used
+   1,              // enable_auto_alt_ref
+   0,              // enable_auto_bwd_ref
+   0,              // noise_sensitivity
+@@ -230,16 +237,16 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,              // fp_mt
+   0,              // tile_columns
+   0,              // tile_rows
+-  0,              // auto_tiles
++  3,              // auto_tiling
+   1,              // enable_tpl_model
+   1,              // enable_keyframe_filtering
+-  7,              // arnr_max_frames
+-  5,              // arnr_strength
++  15,              // arnr_max_frames
++  2,              // arnr_strength
+   0,              // min_gf_interval; 0 -> default decision
+   0,              // max_gf_interval; 0 -> default decision
+   0,              // gf_min_pyr_height
+   5,              // gf_max_pyr_height
+-  AOM_TUNE_PSNR,  // tuning
++  AOM_TUNE_SSIM,  // tuning
+   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
+   ".",                                        // partition info path
+   0,                                          // enable rate guide deltaq
+@@ -250,12 +257,12 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,                                          // rc_max_inter_bitrate_pct
+   0,                                          // gf_cbr_boost_pct
+   0,                                          // lossless
+-  1,                                          // enable_cdef
++  0,                                          // enable_cdef
+   1,                                          // enable_restoration
+   0,                                          // force_video_mode
+   1,                                          // enable_obmc
+   3,                                          // disable_trellis_quant
+-  0,                                          // enable_qm
++  1,                                          // enable_qm
+   DEFAULT_QM_Y,                               // qm_y
+   DEFAULT_QM_U,                               // qm_u
+   DEFAULT_QM_V,                               // qm_v
+@@ -266,7 +273,7 @@ static const struct av1_extracfg default_extra_cfg = {
+   AOM_TIMING_UNSPECIFIED,       // No picture timing signaling in bitstream
+   0,                            // frame_parallel_decoding_mode
+   1,                            // enable dual filter
+-  0,                            // enable delta quant in chroma planes
++  1,                            // enable delta quant in chroma planes
+   NO_AQ,                        // aq_mode
+   DELTA_Q_OBJECTIVE,            // deltaq_mode
+   100,                          // deltaq_strength
+@@ -329,7 +336,7 @@ static const struct av1_extracfg default_extra_cfg = {
+   1,    // enable angle delta
+ #if CONFIG_DENOISE
+   0,   // noise_level
+-  32,  // noise_block_size
++  16,  // noise_block_size
+   1,   // enable_dnl_denoising
+ #endif
+ 
+@@ -341,7 +348,7 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,  // use_inter_dct_only
+   0,  // use_intra_default_tx_only
+   1,  // enable_tx_size_search
+-  0,  // quant_b_adapt
++  1,  // quant_b_adapt
+   0,  // vbr_corpus_complexity_lap
+   {
+       SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX, SEQ_LEVEL_MAX,
+@@ -371,6 +378,13 @@ static const struct av1_extracfg default_extra_cfg = {
+   -1,              // kf_max_pyr_height
+   0,               // sb_qp_sweep
+   AOM_SCREEN_DETECTION_STANDARD,
++  100,             // ssim_rd_mult
++  0,               // luma_bias
++  0,               // vmaf_quantization
++  0,               // vmaf_preprocessing
++  1,               // vmaf_rd_resize
++  0,               // ssim_vmaf_rd
++  0,               // fast_decode
+ };
+ #else
+ // Some settings are changed for realtime only build.
+@@ -386,16 +400,16 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,              // fp_mt
+   0,              // tile_columns
+   0,              // tile_rows
+-  0,              // auto_tiles
++  3,              // auto_tiling
+   0,              // enable_tpl_model
+   0,              // enable_keyframe_filtering
+-  7,              // arnr_max_frames
+-  5,              // arnr_strength
++  15,              // arnr_max_frames
++  2,              // arnr_strength
+   0,              // min_gf_interval; 0 -> default decision
+   0,              // max_gf_interval; 0 -> default decision
+   0,              // gf_min_pyr_height
+   5,              // gf_max_pyr_height
+-  AOM_TUNE_PSNR,  // tuning
++  AOM_TUNE_SSIM,  // tuning
+   "/usr/local/share/model/vmaf_v0.6.1.json",  // VMAF model path
+   ".",                                        // partition info path
+   0,                                          // enable rate guide deltaq
+@@ -406,12 +420,12 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,                                          // rc_max_inter_bitrate_pct
+   0,                                          // gf_cbr_boost_pct
+   0,                                          // lossless
+-  1,                                          // enable_cdef
++  0,                                          // enable_cdef
+   0,                                          // enable_restoration
+   0,                                          // force_video_mode
+   0,                                          // enable_obmc
+   3,                                          // disable_trellis_quant
+-  0,                                          // enable_qm
++  1,                                          // enable_qm
+   DEFAULT_QM_Y,                               // qm_y
+   DEFAULT_QM_U,                               // qm_u
+   DEFAULT_QM_V,                               // qm_v
+@@ -422,7 +436,7 @@ static const struct av1_extracfg default_extra_cfg = {
+   AOM_TIMING_UNSPECIFIED,       // No picture timing signaling in bitstream
+   0,                            // frame_parallel_decoding_mode
+   0,                            // enable dual filter
+-  0,                            // enable delta quant in chroma planes
++  1,                            // enable delta quant in chroma planes
+   CYCLIC_REFRESH_AQ,            // aq_mode
+   NO_DELTA_Q,                   // deltaq_mode
+   100,                          // deltaq_strength
+@@ -485,8 +499,8 @@ static const struct av1_extracfg default_extra_cfg = {
+   0,    // enable angle delta
+ #if CONFIG_DENOISE
+   0,   // noise_level
+-  32,  // noise_block_size
+-  1,   // enable_dnl_denoising
++  16,  // noise_block_size
++  0,   // enable_dnl_denoising
+ #endif
+ 
+   0,  // enable_low_complexity_decode
+@@ -527,6 +541,13 @@ static const struct av1_extracfg default_extra_cfg = {
+   -1,              // kf_max_pyr_height
+   0,               // sb_qp_sweep
+   AOM_SCREEN_DETECTION_STANDARD,
++  100,             // ssim_rd_mult
++  0,               // luma_bias
++  0,               // vmaf_quantization
++  0,               // vmaf_preprocessing
++  1,               // vmaf_rd_resize
++  0,               // ssim_vmaf_rd
++  0,               // fast_decode
+ };
+ #endif
+ 
+@@ -758,7 +779,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
+ 
+   RANGE_CHECK_HI(extra_cfg, tile_columns, 6);
+   RANGE_CHECK_HI(extra_cfg, tile_rows, 6);
+-  RANGE_CHECK_HI(extra_cfg, auto_tiles, 1);
++  RANGE_CHECK_HI(extra_cfg, auto_tiling, 7);
+ 
+   RANGE_CHECK_HI(cfg, monochrome, 1);
+ 
+@@ -770,7 +791,7 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
+   RANGE_CHECK_HI(extra_cfg, sharpness, 7);
+   RANGE_CHECK_HI(extra_cfg, enable_adaptive_sharpness, 1);
+   RANGE_CHECK_HI(extra_cfg, arnr_max_frames, 15);
+-  RANGE_CHECK_HI(extra_cfg, arnr_strength, 6);
++  RANGE_CHECK_HI(extra_cfg, arnr_strength, 4);
+   RANGE_CHECK_HI(extra_cfg, cq_level, 63);
+   RANGE_CHECK(cfg, g_bit_depth, AOM_BITS_8, AOM_BITS_12);
+   RANGE_CHECK(cfg, g_input_bit_depth, 8, 12);
+@@ -855,15 +876,18 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
+ #endif
+ 
+ #if !CONFIG_TUNE_VMAF
+-  if (extra_cfg->tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-      extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++  if ((extra_cfg->tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++       extra_cfg->tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
++      extra_cfg->vmaf_quantization == 1 || extra_cfg->vmaf_preprocessing >= 1 ||
++      extra_cfg->ssim_vmaf_rd > 0) {
+     ERROR(
+         "This error may be related to the wrong configuration options: try to "
+         "set -DCONFIG_TUNE_VMAF=1 at the time CMake is run.");
+   }
+ #endif
+ 
+-  RANGE_CHECK(extra_cfg, tuning, AOM_TUNE_PSNR, AOM_TUNE_SSIMULACRA2);
++  RANGE_CHECK(extra_cfg, tuning, AOM_TUNE_PSNR,
++              AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY);
+ 
+   RANGE_CHECK(extra_cfg, dist_metric, AOM_DIST_METRIC_PSNR,
+               AOM_DIST_METRIC_QM_PSNR);
+@@ -876,8 +900,6 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
+   if (extra_cfg->lossless) {
+     if (extra_cfg->aq_mode != 0)
+       ERROR("Only --aq_mode=0 can be used with --lossless=1.");
+-    if (extra_cfg->enable_chroma_deltaq)
+-      ERROR("Only --enable_chroma_deltaq=0 can be used with --lossless=1.");
+   }
+ 
+   RANGE_CHECK(extra_cfg, max_reference_frames, 3, 7);
+@@ -931,6 +953,31 @@ static aom_codec_err_t validate_config(aom_codec_alg_priv_t *ctx,
+   }
+ 
+   RANGE_CHECK(extra_cfg, screen_detection_mode, 1, 2);
++
++  RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
++  RANGE_CHECK_HI(extra_cfg, luma_bias, 999999999999999999);
++
++#if CONFIG_TUNE_VMAF
++  RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
++  RANGE_CHECK(extra_cfg, vmaf_preprocessing, 0, 3);
++  RANGE_CHECK_HI(extra_cfg, vmaf_rd_resize, 3);
++  RANGE_CHECK_HI(extra_cfg, ssim_vmaf_rd, 100);
++#endif
++
++  RANGE_CHECK_HI(extra_cfg, fast_decode, 3);
++
++  RANGE_CHECK(extra_cfg, ssim_rd_mult, 0, 1000);
++  RANGE_CHECK_HI(extra_cfg, luma_bias, 999999999999999999);
++
++#if CONFIG_TUNE_VMAF
++  RANGE_CHECK_BOOL(extra_cfg, vmaf_quantization);
++  RANGE_CHECK(extra_cfg, vmaf_preprocessing, 0, 3);
++  RANGE_CHECK_HI(extra_cfg, vmaf_rd_resize, 3);
++  RANGE_CHECK_HI(extra_cfg, ssim_vmaf_rd, 100);
++#endif
++
++  RANGE_CHECK_HI(extra_cfg, fast_decode, 3);
++
+   return AOM_CODEC_OK;
+ }
+ 
+@@ -1016,38 +1063,81 @@ static void disable_superres(SuperResCfg *const superres_cfg) {
+   superres_cfg->superres_kf_qthresh = 255;
+ }
+ 
+-static void set_auto_tiles(TileConfig *const tile_cfg, unsigned int width,
+-                           unsigned int height, unsigned int threads) {
+-  int tile_cols_log2 = 0;
+-  int tile_rows_log2 = 0;
+-  if (threads < 2) return;
+-  // Avoid small tiles because they are particularly bad for coding.
+-  // Use no more tiles than the number of threads. Aim for one tile per
+-  // thread. Using more than one thread inside one tile could be less
+-  // efficient. Using more tiles than the number of threads would result
+-  // in a compression penalty without much benefit.
+-  const uint32_t kMinTileArea = 128 * 128;
+-  const uint32_t kMaxTiles = 32;
+-  uint32_t frame_area = width * height;
+-  uint32_t tiles = (frame_area + kMinTileArea - 1) / kMinTileArea;
+-  if (tiles > kMaxTiles) {
+-    tiles = kMaxTiles;
++static unsigned int max_tiling_log2(unsigned int sb_units,
++                                    unsigned int min_sb_units) {
++  unsigned int max_log2 = 0;
++
++  for (unsigned int log2 = 0; log2 <= 6; log2++) {
++    // For log2 == 1, check all tiles for min SB unit limit
++    if (log2 == 1) {
++      unsigned int tile_width = (sb_units + (1 << log2) - 1) >> log2;
++      unsigned int residual_width = sb_units - tile_width;
++      if (tile_width < min_sb_units || residual_width < min_sb_units) {
++        break;
++      }
++      max_log2 = log2;
++      continue;
++    }
++    // For all other log2, check only non-residual tiles for min SB unit limit
++    unsigned int tile_size = (sb_units + (1 << log2) - 1) >> log2;
++    if (tile_size < min_sb_units) {
++      break;
++    }
++    max_log2 = log2;
+   }
+-  if (tiles > threads) {
+-    tiles = threads;
++  return max_log2;
++}
++
++static void set_auto_tiling(TileConfig *const tile_cfg, unsigned int frame_width,
++                           unsigned int frame_height,
++                           aom_superblock_size_t sb_size,
++                           unsigned int auto_tiling) {
++  const unsigned int sb_shift =
++      (sb_size == AOM_SUPERBLOCK_SIZE_64X64)
++          ? MIN_SB_SIZE_LOG2 - 2
++          : MAX_SB_SIZE_LOG2 - 2;
++  const unsigned int mi_cols = (frame_width + MI_SIZE - 1) >> 2;
++  const unsigned int mi_rows = (frame_height + MI_SIZE - 1) >> 2;
++  const unsigned int sb_cols = (mi_cols + (1 << sb_shift) - 1) >> sb_shift;
++  const unsigned int sb_rows = (mi_rows + (1 << sb_shift) - 1) >> sb_shift;
++
++  // Minimum number of superblocks per tile dimension
++  unsigned int min_sb_units = 4;
++  switch (auto_tiling) {
++    case 1:
++      min_sb_units = 32;
++      break;
++    case 2:
++      min_sb_units = 24;
++      break;
++    case 3:
++      min_sb_units = 16;
++      break;
++    case 4:
++      min_sb_units = 12;
++      break;
++    case 5:
++      min_sb_units = 8;
++      break;
++    case 6:
++      min_sb_units = 6;
++      break;
++    case 7:
++      min_sb_units = 4;
++      break;
++    default:
++      return;
+   }
+-  int tiles_log2 = (int)log2(tiles);
+-  // If the frame width is equal or greater than the height, use more tile
+-  // columns than tile rows.
+-  if (width >= height) {
+-    tile_cols_log2 = (tiles_log2 + 1) / 2;
+-    tile_rows_log2 = tiles_log2 - tile_cols_log2;
+-  } else {
+-    tile_rows_log2 = (tiles_log2 + 1) / 2;
+-    tile_cols_log2 = tiles_log2 - tile_rows_log2;
++  if (sb_size == AOM_SUPERBLOCK_SIZE_128X128) {
++    min_sb_units >>= 1;
++  }
++
++  if (tile_cfg->tile_columns == 0) {
++    tile_cfg->tile_columns = max_tiling_log2(sb_cols, min_sb_units);
++  }
++  if (tile_cfg->tile_rows == 0) {
++    tile_cfg->tile_rows = max_tiling_log2(sb_rows, min_sb_units);
+   }
+-  tile_cfg->tile_columns = tile_cols_log2;
+-  tile_cfg->tile_rows = tile_rows_log2;
+ }
+ 
+ static void update_default_encoder_config(const cfg_options_t *cfg,
+@@ -1215,7 +1305,9 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   tool_cfg->bit_depth = cfg->g_bit_depth;
+   tool_cfg->cdef_control = (CDEF_CONTROL)extra_cfg->enable_cdef;
+   tool_cfg->enable_restoration =
+-      (cfg->g_usage == AOM_USAGE_REALTIME) ? 0 : extra_cfg->enable_restoration;
++      (cfg->g_usage == AOM_USAGE_REALTIME ||
++       oxcf->tune_cfg.content == AOM_CONTENT_PSY101 ||
++       extra_cfg->fast_decode > 1) ? 0 : extra_cfg->enable_restoration;
+   tool_cfg->force_video_mode = extra_cfg->force_video_mode;
+   tool_cfg->enable_palette = extra_cfg->enable_palette;
+   // FIXME(debargha): Should this be:
+@@ -1224,7 +1316,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   // Disallow using temporal MVs while large_scale_tile = 1.
+   tool_cfg->enable_ref_frame_mvs =
+       extra_cfg->allow_ref_frame_mvs && !cfg->large_scale_tile;
+-  tool_cfg->superblock_size = extra_cfg->superblock_size;
++  if (oxcf->tune_cfg.content == AOM_CONTENT_PSY101 ||
++      extra_cfg->auto_tiling > 5) {
++    tool_cfg->superblock_size = AOM_SUPERBLOCK_SIZE_64X64;
++    extra_cfg->superblock_size = tool_cfg->superblock_size;
++  } else {
++    tool_cfg->superblock_size = extra_cfg->superblock_size;
++  }
+   tool_cfg->enable_monochrome = cfg->monochrome;
+   tool_cfg->full_still_picture_hdr = cfg->full_still_picture_hdr != 0;
+   tool_cfg->enable_dual_filter = extra_cfg->enable_dual_filter;
+@@ -1247,8 +1345,12 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+ 
+   tool_cfg->error_resilient_mode =
+       cfg->g_error_resilient | extra_cfg->error_resilient_mode;
+-  tool_cfg->frame_parallel_decoding_mode =
++  if (extra_cfg->fast_decode > 2) {
++    tool_cfg->frame_parallel_decoding_mode = 1;
++  } else {
++    tool_cfg->frame_parallel_decoding_mode =
+       extra_cfg->frame_parallel_decoding_mode;
++  }
+ 
+   // Set Quantization related configuration.
+   q_cfg->using_qm = extra_cfg->enable_qm;
+@@ -1257,13 +1359,19 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   q_cfg->quant_b_adapt = extra_cfg->quant_b_adapt;
+   q_cfg->enable_chroma_deltaq = extra_cfg->enable_chroma_deltaq;
+   q_cfg->aq_mode = extra_cfg->aq_mode;
+-  q_cfg->deltaq_mode = extra_cfg->deltaq_mode;
++  if (oxcf->passes == 2 && tune_cfg->content == AOM_CONTENT_PSY101) {
++    q_cfg->deltaq_mode = DELTA_Q_PERCEPTUAL;
++  } else if (oxcf->mode == ALLINTRA &&
++             tune_cfg->content == AOM_CONTENT_PSY101) {
++    q_cfg->deltaq_mode = DELTA_Q_VARIANCE_BOOST;
++  } else {
++    q_cfg->deltaq_mode = extra_cfg->deltaq_mode;
++  }
+   q_cfg->deltaq_strength = extra_cfg->deltaq_strength;
+   q_cfg->use_fixed_qp_offsets =
+       cfg->use_fixed_qp_offsets && (rc_cfg->mode == AOM_Q);
+   q_cfg->enable_hdr_deltaq =
+       (q_cfg->deltaq_mode == DELTA_Q_HDR) &&
+-      (cfg->g_bit_depth == AOM_BITS_10) &&
+       (extra_cfg->color_primaries == AOM_CICP_CP_BT_2020);
+ 
+   tool_cfg->enable_deltalf_mode =
+@@ -1330,11 +1438,7 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+ 
+   oxcf->speed = extra_cfg->cpu_used;
+   // TODO(yunqingwang, any) In REALTIME mode, 1080p performance at speed 5 & 6
+-  // is quite bad. Force to use speed 7 for now. Will investigate it when we
+-  // work on rd path optimization later.
+-  if (oxcf->mode == REALTIME && AOMMIN(cfg->g_w, cfg->g_h) >= 1080 &&
+-      oxcf->speed < 7)
+-    oxcf->speed = 7;
++  // is quite bad. Will investigate it when we work on rd path optimization later.
+ 
+   // Now, low complexity decode mode is only supported for good-quality
+   // encoding speed 1 to 3 and for vertical videos with a resolution between
+@@ -1364,7 +1468,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   gf_cfg->min_gf_interval = extra_cfg->min_gf_interval;
+   gf_cfg->max_gf_interval = extra_cfg->max_gf_interval;
+   gf_cfg->gf_min_pyr_height = extra_cfg->gf_min_pyr_height;
+-  gf_cfg->gf_max_pyr_height = extra_cfg->gf_max_pyr_height;
++  if (extra_cfg->gf_max_pyr_height == 5 &&
++      (tune_cfg->content == AOM_CONTENT_PSY101 ||
++       extra_cfg->fast_decode > 0)) {
++    gf_cfg->gf_max_pyr_height = 4;
++  } else {
++    gf_cfg->gf_max_pyr_height = extra_cfg->gf_max_pyr_height;
++  }
+ 
+   // Set tune related configuration.
+   tune_cfg->tuning = extra_cfg->tuning;
+@@ -1402,13 +1512,13 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   tile_cfg->enable_large_scale_tile = cfg->large_scale_tile;
+   tile_cfg->enable_single_tile_decoding =
+       (tile_cfg->enable_large_scale_tile) ? extra_cfg->single_tile_decoding : 0;
+-  if (extra_cfg->auto_tiles) {
+-    set_auto_tiles(tile_cfg, cfg->g_w, cfg->g_h, cfg->g_threads);
++  tile_cfg->tile_columns = extra_cfg->tile_columns;
++  tile_cfg->tile_rows = extra_cfg->tile_rows;
++  if (extra_cfg->auto_tiling > 0) {
++    set_auto_tiling(tile_cfg, cfg->g_w, cfg->g_h, tool_cfg->superblock_size,
++                    extra_cfg->auto_tiling);
+     extra_cfg->tile_columns = tile_cfg->tile_columns;
+     extra_cfg->tile_rows = tile_cfg->tile_rows;
+-  } else {
+-    tile_cfg->tile_columns = extra_cfg->tile_columns;
+-    tile_cfg->tile_rows = extra_cfg->tile_rows;
+   }
+   tile_cfg->tile_width_count = AOMMIN(cfg->tile_width_count, MAX_TILE_COLS);
+   tile_cfg->tile_height_count = AOMMIN(cfg->tile_height_count, MAX_TILE_ROWS);
+@@ -1482,7 +1592,11 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   intra_mode_cfg->auto_intra_tools_off = extra_cfg->auto_intra_tools_off;
+ 
+   // Set transform size/type configuration.
+-  txfm_cfg->enable_tx64 = extra_cfg->enable_tx64;
++  if (oxcf->tune_cfg.content == AOM_CONTENT_PSY101){
++    txfm_cfg->enable_tx64 = 0;
++  } else {
++    txfm_cfg->enable_tx64 = extra_cfg->enable_tx64;
++  }
+   txfm_cfg->enable_flip_idtx = extra_cfg->enable_flip_idtx;
+   txfm_cfg->enable_rect_tx = extra_cfg->enable_rect_tx;
+   txfm_cfg->reduced_tx_type_set = extra_cfg->reduced_tx_type_set;
+@@ -1567,6 +1681,28 @@ static void set_encoder_config(AV1EncoderConfig *oxcf,
+   oxcf->kf_max_pyr_height = extra_cfg->kf_max_pyr_height;
+ 
+   oxcf->sb_qp_sweep = extra_cfg->sb_qp_sweep;
++
++  oxcf->ssim_rd_mult = extra_cfg->ssim_rd_mult;
++
++  oxcf->luma_bias = extra_cfg->luma_bias;
++
++#if CONFIG_TUNE_VMAF
++  oxcf->vmaf_quantization = extra_cfg->vmaf_quantization;
++
++  oxcf->vmaf_preprocessing = extra_cfg->vmaf_preprocessing;
++  if (oxcf->vmaf_preprocessing > 0) {
++    oxcf->override_preprocessing = 1;
++  }
++
++  oxcf->vmaf_rd_resize = extra_cfg->vmaf_rd_resize;
++  oxcf->vmaf_rd_bsize = (extra_cfg->vmaf_rd_resize == 0) ? BLOCK_64X64 :
++                        (extra_cfg->vmaf_rd_resize == 1) ? BLOCK_32X32 :
++                        (extra_cfg->vmaf_rd_resize == 2) ? BLOCK_16X16 :
++                        (extra_cfg->vmaf_rd_resize == 3) ? BLOCK_8X8 :
++                        BLOCK_32X32;
++
++  oxcf->ssim_vmaf_rd = extra_cfg->ssim_vmaf_rd;
++#endif
+ }
+ 
+ AV1EncoderConfig av1_get_encoder_config(const aom_codec_enc_cfg_t *cfg) {
+@@ -1781,11 +1917,6 @@ static aom_codec_err_t ctrl_set_row_mt(aom_codec_alg_priv_t *ctx,
+ 
+ static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
+                                              va_list args) {
+-  // If the control AUTO_TILES is used (set to 1) then don't override
+-  // the tile_columns set via the AUTO_TILES control.
+-  if (ctx->extra_cfg.auto_tiles) {
+-    ERROR("AUTO_TILES is set so AV1E_SET_TILE_COLUMNS should not be called.");
+-  }
+   struct av1_extracfg extra_cfg = ctx->extra_cfg;
+   unsigned int tile_columns = CAST(AV1E_SET_TILE_COLUMNS, args);
+   if (tile_columns == extra_cfg.tile_columns) return AOM_CODEC_OK;
+@@ -1795,11 +1926,6 @@ static aom_codec_err_t ctrl_set_tile_columns(aom_codec_alg_priv_t *ctx,
+ 
+ static aom_codec_err_t ctrl_set_tile_rows(aom_codec_alg_priv_t *ctx,
+                                           va_list args) {
+-  // If the control AUTO_TILES is used (set to 1) then don't override
+-  // the tile_rows set via the AUTO_TILES control.
+-  if (ctx->extra_cfg.auto_tiles) {
+-    ERROR("AUTO_TILES is set so AV1E_SET_TILE_ROWS should not be called.");
+-  }
+   struct av1_extracfg extra_cfg = ctx->extra_cfg;
+   unsigned int tile_rows = CAST(AV1E_SET_TILE_ROWS, args);
+   if (tile_rows == extra_cfg.tile_rows) return AOM_CODEC_OK;
+@@ -2816,12 +2942,12 @@ static aom_codec_err_t ctrl_set_svc_frame_drop_mode(aom_codec_alg_priv_t *ctx,
+     return AOM_CODEC_OK;
+ }
+ 
+-static aom_codec_err_t ctrl_set_auto_tiles(aom_codec_alg_priv_t *ctx,
++static aom_codec_err_t ctrl_set_auto_tiling(aom_codec_alg_priv_t *ctx,
+                                            va_list args) {
+-  unsigned int auto_tiles = CAST(AV1E_SET_AUTO_TILES, args);
+-  if (auto_tiles == ctx->extra_cfg.auto_tiles) return AOM_CODEC_OK;
++  unsigned int auto_tiling = CAST(AV1E_SET_AUTO_TILING, args);
++  if (auto_tiling == ctx->extra_cfg.auto_tiling) return AOM_CODEC_OK;
+   struct av1_extracfg extra_cfg = ctx->extra_cfg;
+-  extra_cfg.auto_tiles = auto_tiles;
++  extra_cfg.auto_tiling = auto_tiling;
+   return update_extra_cfg(ctx, &extra_cfg);
+ }
+ 
+@@ -3273,8 +3399,10 @@ static aom_codec_err_t encoder_encode(aom_codec_alg_priv_t *ctx,
+   }
+ 
+ #if CONFIG_TUNE_VMAF
+-  if (ctx->extra_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-      ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++  if ((ctx->extra_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++       ctx->extra_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN)||
++      ctx->extra_cfg.vmaf_quantization == 1 ||
++      ctx->extra_cfg.vmaf_preprocessing >= 1) {
+     aom_init_vmaf_model(&ppi->cpi->vmaf_info.vmaf_model,
+                         ppi->cpi->oxcf.tune_cfg.vmaf_model_path);
+   }
+@@ -4266,22 +4394,12 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
+   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_cols, argv,
+                               err_string)) {
+     extra_cfg.tile_columns = arg_parse_uint_helper(&arg, err_string);
+-    if (extra_cfg.auto_tiles) {
+-      snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
+-               "Cannot set tile-cols because auto-tiles is already set.");
+-      err = AOM_CODEC_INVALID_PARAM;
+-    }
+   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.tile_rows, argv,
+                               err_string)) {
+     extra_cfg.tile_rows = arg_parse_uint_helper(&arg, err_string);
+-    if (extra_cfg.auto_tiles) {
+-      snprintf(err_string, ARG_ERR_MSG_MAX_LEN,
+-               "Cannot set tile-rows because auto-tiles is already set.");
+-      err = AOM_CODEC_INVALID_PARAM;
+-    }
+-  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.auto_tiles, argv,
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.auto_tiling, argv,
+                               err_string)) {
+-    extra_cfg.auto_tiles = arg_parse_uint_helper(&arg, err_string);
++    extra_cfg.auto_tiling = arg_parse_uint_helper(&arg, err_string);
+   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.enable_tpl_model,
+                               argv, err_string)) {
+     extra_cfg.enable_tpl_model = arg_parse_uint_helper(&arg, err_string);
+@@ -4301,6 +4419,18 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
+                             err_string)) {
+     err = allocate_and_set_string(value, default_extra_cfg.vmaf_model_path,
+                                   &extra_cfg.vmaf_model_path, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_quantization,
++                              argv, err_string)) {
++    extra_cfg.vmaf_quantization = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_preprocessing,
++                              argv, err_string)) {
++    extra_cfg.vmaf_preprocessing = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_vmaf_rd,
++                              argv, err_string)) {
++    extra_cfg.ssim_vmaf_rd = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.vmaf_rd_resize,
++                              argv, err_string)) {
++    extra_cfg.vmaf_rd_resize = arg_parse_int_helper(&arg, err_string);
+   }
+ #endif
+   else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.partition_info_path,
+@@ -4671,6 +4801,15 @@ static aom_codec_err_t encoder_set_option(aom_codec_alg_priv_t *ctx,
+   } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.screen_detection_mode,
+                               argv, err_string)) {
+     extra_cfg.screen_detection_mode = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.ssim_rd_mult,
++                              argv, err_string)) {
++    extra_cfg.ssim_rd_mult = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.luma_bias,
++                              argv, err_string)) {
++    extra_cfg.luma_bias = arg_parse_int_helper(&arg, err_string);
++  } else if (arg_match_helper(&arg, &g_av1_codec_arg_defs.fast_decode,
++                              argv, err_string)) {
++    extra_cfg.fast_decode = arg_parse_int_helper(&arg, err_string);
+   } else {
+     match = 0;
+     snprintf(err_string, ARG_ERR_MSG_MAX_LEN, "Cannot find aom option %s",
+@@ -4739,6 +4878,55 @@ static aom_codec_err_t ctrl_get_high_motion_content_screen_rtc(
+   return AOM_CODEC_OK;
+ }
+ 
++static aom_codec_err_t ctrl_set_ssim_rd_mult(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.ssim_rd_mult = CAST(AOME_SET_SSIM_RD_MULT, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_luma_bias(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.luma_bias = CAST(AOME_SET_LUMA_BIAS, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_vmaf_quantization(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.vmaf_quantization = CAST(AOME_SET_VMAF_QUANTIZATION, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_vmaf_preprocessing(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.vmaf_preprocessing = CAST(AOME_SET_VMAF_PREPROCESSING, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_vmaf_rd_resize(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.vmaf_rd_resize = CAST(AOME_SET_VMAF_RD_RESIZE, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_ssim_vmaf_rd(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.ssim_vmaf_rd = CAST(AOME_SET_SSIM_VMAF_RD, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
++static aom_codec_err_t ctrl_set_fast_decode(aom_codec_alg_priv_t *ctx,
++                                          va_list args) {
++  struct av1_extracfg extra_cfg = ctx->extra_cfg;
++  extra_cfg.fast_decode = CAST(AOME_SET_FAST_DECODE, args);
++  return update_extra_cfg(ctx, &extra_cfg);
++}
++
+ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
+   { AV1_COPY_REFERENCE, ctrl_copy_reference },
+   { AOME_USE_REFERENCE, ctrl_use_reference },
+@@ -4885,7 +5073,7 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
+   { AV1E_SET_BITRATE_ONE_PASS_CBR, ctrl_set_bitrate_one_pass_cbr },
+   { AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, ctrl_set_max_consec_frame_drop_cbr },
+   { AV1E_SET_SVC_FRAME_DROP_MODE, ctrl_set_svc_frame_drop_mode },
+-  { AV1E_SET_AUTO_TILES, ctrl_set_auto_tiles },
++  { AV1E_SET_AUTO_TILING, ctrl_set_auto_tiling },
+   { AV1E_SET_POSTENCODE_DROP_RTC, ctrl_set_postencode_drop_rtc },
+   { AV1E_SET_MAX_CONSEC_FRAME_DROP_MS_CBR,
+     ctrl_set_max_consec_frame_drop_ms_cbr },
+@@ -4894,6 +5082,13 @@ static aom_codec_ctrl_fn_map_t encoder_ctrl_maps[] = {
+   { AV1E_SET_SCREEN_CONTENT_DETECTION_MODE,
+     ctrl_set_screen_content_detection_mode },
+   { AV1E_SET_ENABLE_ADAPTIVE_SHARPNESS, ctrl_set_enable_adaptive_sharpness },
++  { AOME_SET_SSIM_RD_MULT, ctrl_set_ssim_rd_mult },
++  { AOME_SET_LUMA_BIAS, ctrl_set_luma_bias },
++  { AOME_SET_VMAF_QUANTIZATION, ctrl_set_vmaf_quantization },
++  { AOME_SET_VMAF_PREPROCESSING, ctrl_set_vmaf_preprocessing },
++  { AOME_SET_VMAF_RD_RESIZE, ctrl_set_vmaf_rd_resize },
++  { AOME_SET_SSIM_VMAF_RD, ctrl_set_ssim_vmaf_rd },
++  { AOME_SET_FAST_DECODE, ctrl_set_fast_decode },
+ 
+   // Getters
+   { AOME_GET_LAST_QUANTIZER, ctrl_get_quantizer },
+@@ -4971,7 +5166,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = {
+       // keyframing settings (kf)
+       0,                       // fwd_kf_enabled
+       AOM_KF_AUTO,             // kf_mode
+-      0,                       // kf_min_dist
++      12,                      // kf_min_dist
+       9999,                    // kf_max_dist
+       0,                       // sframe_dist
+       1,                       // sframe_mode
+@@ -5042,7 +5237,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = {
+       // keyframing settings (kf)
+       0,                       // fwd_kf_enabled
+       AOM_KF_AUTO,             // kf_mode
+-      0,                       // kf_min_dist
++      12,                      // kf_min_dist
+       9999,                    // kf_max_dist
+       0,                       // sframe_dist
+       1,                       // sframe_mode
+@@ -5138,7 +5333,7 @@ static const aom_codec_enc_cfg_t encoder_usage_cfg[] = {
+ #define VERSION_STRING
+ #endif
+ aom_codec_iface_t aom_codec_av1_cx_algo = {
+-  "AOMedia Project AV1 Encoder" VERSION_STRING,
++  "AOMedia Project AV1 Encoder Psy101" VERSION_STRING,
+   AOM_CODEC_INTERNAL_ABI_VERSION,
+   (CONFIG_AV1_HIGHBITDEPTH ? AOM_CODEC_CAP_HIGHBITDEPTH : 0) |
+       AOM_CODEC_CAP_ENCODER | AOM_CODEC_CAP_PSNR,  // aom_codec_caps_t
+diff --git a/av1/common/quant_common.h b/av1/common/quant_common.h
+index 965a746ae..2075f3f58 100644
+--- a/av1/common/quant_common.h
++++ b/av1/common/quant_common.h
+@@ -34,7 +34,7 @@ extern "C" {
+ #define DEFAULT_QM_Y 10
+ #define DEFAULT_QM_U 11
+ #define DEFAULT_QM_V 12
+-#define DEFAULT_QM_FIRST 5
++#define DEFAULT_QM_FIRST 0
+ #define DEFAULT_QM_LAST 9
+ #define DEFAULT_QM_FIRST_ALLINTRA 4
+ #define DEFAULT_QM_LAST_ALLINTRA 10
+diff --git a/av1/encoder/aq_variance.c b/av1/encoder/aq_variance.c
+index e8bab9b1c..cd3b2d92a 100644
+--- a/av1/encoder/aq_variance.c
++++ b/av1/encoder/aq_variance.c
+@@ -91,31 +91,20 @@ void av1_vaq_frame_setup(AV1_COMP *cpi) {
+   }
+ }
+ 
+-int av1_log_block_avg(const AV1_COMP *cpi, const MACROBLOCK *x, BLOCK_SIZE bs,
+-                      int mi_row, int mi_col) {
+-  // This functions returns the block average of luma block
+-  unsigned int sum, avg, num_pix;
+-  int r, c;
+-  const int pic_w = cpi->common.width;
+-  const int pic_h = cpi->common.height;
++float av1_log_block_avg(const MACROBLOCK *x, BLOCK_SIZE bs) {
++  // This function returns the block average of luma block
++  unsigned int sum = 0, num_pix = 0;
+   const int bw = MI_SIZE * mi_size_wide[bs];
+   const int bh = MI_SIZE * mi_size_high[bs];
+   const uint16_t *x16 = CONVERT_TO_SHORTPTR(x->plane[0].src.buf);
+ 
+-  sum = 0;
+-  num_pix = 0;
+-  avg = 0;
+-  int row = mi_row << MI_SIZE_LOG2;
+-  int col = mi_col << MI_SIZE_LOG2;
+-  for (r = row; (r < (row + bh)) && (r < pic_h); r++) {
+-    for (c = col; (c < (col + bw)) && (c < pic_w); c++) {
++  for (int r = 0; r < bh; r++) {
++    for (int c = 0; c < bw; c++) {
+       sum += *(x16 + r * x->plane[0].src.stride + c);
+       num_pix++;
+     }
+   }
+-  if (num_pix != 0) {
+-    avg = sum / num_pix;
+-  }
++  float avg = (float)sum / num_pix;
+   return avg;
+ }
+ 
+diff --git a/av1/encoder/aq_variance.h b/av1/encoder/aq_variance.h
+index 8a4c9181b..59d86d4a7 100644
+--- a/av1/encoder/aq_variance.h
++++ b/av1/encoder/aq_variance.h
+@@ -22,8 +22,7 @@ extern "C" {
+ #if !CONFIG_REALTIME_ONLY
+ void av1_vaq_frame_setup(AV1_COMP *cpi);
+ 
+-int av1_log_block_avg(const AV1_COMP *cpi, const MACROBLOCK *x, BLOCK_SIZE bs,
+-                      int mi_row, int mi_col);
++float av1_log_block_avg(const MACROBLOCK *x, BLOCK_SIZE bs);
+ int av1_compute_q_from_energy_level_deltaq_mode(const AV1_COMP *const cpi,
+                                                 int block_var_level);
+ int av1_block_wavelet_energy_level(const AV1_COMP *cpi, const MACROBLOCK *x,
+diff --git a/av1/encoder/av1_quantize.c b/av1/encoder/av1_quantize.c
+index 1673d5324..aae0e4052 100644
+--- a/av1/encoder/av1_quantize.c
++++ b/av1/encoder/av1_quantize.c
+@@ -874,22 +874,25 @@ static int adjust_hdr_cr_deltaq(int base_qindex) {
+   return dqpCr;
+ }
+ 
+-void av1_set_quantizer(AV1_COMMON *const cm, int min_qmlevel, int max_qmlevel,
++void av1_set_quantizer(AV1_COMP *const cpi, int min_qmlevel, int max_qmlevel,
+                        int q, int enable_chroma_deltaq, int enable_hdr_deltaq,
+                        bool is_allintra, aom_tune_metric tuning) {
+   // quantizer has to be reinitialized with av1_init_quantizer() if any
+   // delta_q changes.
++  AV1_COMMON *const cm = &cpi->common;
+   CommonQuantParams *quant_params = &cm->quant_params;
+   quant_params->base_qindex = AOMMAX(cm->delta_q_info.delta_q_present_flag, q);
+   quant_params->y_dc_delta_q = 0;
+ 
+   // Disable deltaq in lossless mode.
+-  if (enable_chroma_deltaq && q) {
++  if (enable_chroma_deltaq && !is_lossless_requested(&cpi->oxcf.rc_cfg)) {
++    int chroma_dc_delta_q = 0;
++    int chroma_ac_delta_q = 0;
++    int chroma_u_delta_q = 0;
++    int chroma_v_delta_q = 0;
++
+     if (is_allintra &&
+         (tuning == AOM_TUNE_IQ || tuning == AOM_TUNE_SSIMULACRA2)) {
+-      int chroma_dc_delta_q = 0;
+-      int chroma_ac_delta_q = 0;
+-
+       if (cm->seq_params->subsampling_x == 1 &&
+           cm->seq_params->subsampling_y == 1) {
+         // 4:2:0 subsampling: Constant chroma delta_q decrease (i.e. improved
+@@ -942,37 +945,32 @@ void av1_set_quantizer(AV1_COMMON *const cm, int min_qmlevel, int max_qmlevel,
+         chroma_dc_delta_q = 0;
+         chroma_ac_delta_q = clamp((quant_params->base_qindex / 2), 0, 24);
+       }
+-
+-      // TODO: bug https://crbug.com/aomedia/375221136 - find chroma_delta_q
+-      // values for 4:2:2 subsampling mode.
+-      quant_params->u_dc_delta_q = chroma_dc_delta_q;
+-      quant_params->u_ac_delta_q = chroma_ac_delta_q;
+-      quant_params->v_dc_delta_q = chroma_dc_delta_q;
+-      quant_params->v_ac_delta_q = chroma_ac_delta_q;
+     } else {
+       // TODO(aomedia:2717): need to design better delta
+-      quant_params->u_dc_delta_q = 2;
+-      quant_params->u_ac_delta_q = 2;
+-      quant_params->v_dc_delta_q = 2;
+-      quant_params->v_ac_delta_q = 2;
++      // If chroma-deltaq is enabled, we apply these chroma q offsets:
++      // 420: 0, 422: +3, 444: +6
++      switch (cpi->source->subsampling_x + cpi->source->subsampling_y) {
++        case 0: chroma_dc_delta_q = chroma_ac_delta_q = 6; break;
++        case 1: chroma_dc_delta_q = chroma_ac_delta_q = 3; break;
++        default: chroma_dc_delta_q = chroma_ac_delta_q = 0;
++      }
++    }
++
++    // following section 8.3.2 in T-REC-H.Sup15 document
++    // to apply to AV1 qindex in the range of [0, 255]
++    if (enable_hdr_deltaq) {
++      chroma_u_delta_q += adjust_hdr_cb_deltaq(quant_params->base_qindex);
++      chroma_v_delta_q += adjust_hdr_cr_deltaq(quant_params->base_qindex);
+     }
+-  } else {
+-    quant_params->u_dc_delta_q = 0;
+-    quant_params->u_ac_delta_q = 0;
+-    quant_params->v_dc_delta_q = 0;
+-    quant_params->v_ac_delta_q = 0;
+-  }
+ 
+-  // following section 8.3.2 in T-REC-H.Sup15 document
+-  // to apply to AV1 qindex in the range of [0, 255]
+-  if (enable_hdr_deltaq && q) {
+-    int dqpCb = adjust_hdr_cb_deltaq(quant_params->base_qindex);
+-    int dqpCr = adjust_hdr_cr_deltaq(quant_params->base_qindex);
+-    quant_params->u_dc_delta_q = quant_params->u_ac_delta_q = dqpCb;
+-    quant_params->v_dc_delta_q = quant_params->v_ac_delta_q = dqpCr;
+-    if (dqpCb != dqpCr) {
++    if (chroma_u_delta_q != chroma_v_delta_q) {
+       cm->seq_params->separate_uv_delta_q = 1;
+     }
++
++    quant_params->u_dc_delta_q = chroma_u_delta_q + chroma_dc_delta_q;
++    quant_params->u_ac_delta_q = chroma_u_delta_q + chroma_ac_delta_q;
++    quant_params->v_dc_delta_q = chroma_v_delta_q + chroma_dc_delta_q;
++    quant_params->v_ac_delta_q = chroma_v_delta_q + chroma_ac_delta_q;
+   }
+ 
+   // Select the best luma and chroma QM formulas based on encoding mode and
+diff --git a/av1/encoder/av1_quantize.h b/av1/encoder/av1_quantize.h
+index 9010d49c0..65ea57d7e 100644
+--- a/av1/encoder/av1_quantize.h
++++ b/av1/encoder/av1_quantize.h
+@@ -122,7 +122,7 @@ void av1_init_quantizer(EncQuantDequantParams *const enc_quant_dequant_params,
+                         CommonQuantParams *quant_params,
+                         aom_bit_depth_t bit_depth, int sharpness);
+ 
+-void av1_set_quantizer(struct AV1Common *const cm, int min_qmlevel,
++void av1_set_quantizer(struct AV1_COMP *const cpi, int min_qmlevel,
+                        int max_qmlevel, int q, int enable_chroma_deltaq,
+                        int enable_hdr_deltaq, bool is_allintra,
+                        aom_tune_metric tuning);
+diff --git a/av1/encoder/encode_strategy.c b/av1/encoder/encode_strategy.c
+index b18b21f5f..441bfe22c 100644
+--- a/av1/encoder/encode_strategy.c
++++ b/av1/encoder/encode_strategy.c
+@@ -1720,8 +1720,10 @@ int av1_encode_strategy(AV1_COMP *const cpi, size_t *const size,
+ 
+ #if CONFIG_TUNE_VMAF
+   if (!is_stat_generation_stage(cpi) &&
+-      (oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-       oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN)) {
++      ((oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++        oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
++       oxcf->vmaf_quantization == 1 ||
++       oxcf->vmaf_preprocessing == 1 || oxcf->vmaf_preprocessing == 2)) {
+     av1_update_vmaf_curve(cpi);
+   }
+ #endif
+diff --git a/av1/encoder/encodeframe.c b/av1/encoder/encodeframe.c
+index 4bb5c0d61..6074eeb95 100644
+--- a/av1/encoder/encodeframe.c
++++ b/av1/encoder/encodeframe.c
+@@ -339,8 +339,6 @@ static inline void setup_delta_q(AV1_COMP *const cpi, ThreadData *td,
+     current_qindex = av1_get_sbq_perceptual_ai(cpi, sb_size, mi_row, mi_col);
+   } else if (cpi->oxcf.q_cfg.deltaq_mode == DELTA_Q_USER_RATING_BASED) {
+     current_qindex = av1_get_sbq_user_rating_based(cpi, mi_row, mi_col);
+-  } else if (cpi->oxcf.q_cfg.enable_hdr_deltaq) {
+-    current_qindex = av1_get_q_for_hdr(cpi, x, sb_size, mi_row, mi_col);
+   } else if (cpi->oxcf.q_cfg.deltaq_mode == DELTA_Q_VARIANCE_BOOST) {
+     current_qindex = av1_get_sbq_variance_boost(cpi, x);
+   }
+@@ -1289,7 +1287,9 @@ static inline void encode_sb_row(AV1_COMP *cpi, ThreadData *td,
+     x->nonrd_prune_ref_frame_search =
+         cpi->sf.rt_sf.nonrd_prune_ref_frame_search;
+ 
+-    if (cpi->oxcf.mode == ALLINTRA) {
++    if (cpi->oxcf.mode == ALLINTRA || cpi->oxcf.tune_cfg.content ==
++    AOM_CONTENT_PSY || cpi->oxcf.tune_cfg.content ==
++    AOM_CONTENT_PSY101) {
+       x->intra_sb_rdmult_modifier = 128;
+     }
+ 
+diff --git a/av1/encoder/encodeframe_utils.c b/av1/encoder/encodeframe_utils.c
+index 79da14feb..9addbf710 100644
+--- a/av1/encoder/encodeframe_utils.c
++++ b/av1/encoder/encodeframe_utils.c
+@@ -47,7 +47,8 @@ void av1_set_ssim_rdmult(const AV1_COMP *const cpi, int *errorperbit,
+   assert(bsize_base >= BLOCK_8X8);
+   assert(cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM ||
+          cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
+-         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2);
++         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
++         cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY);
+ 
+   for (row = mi_row / num_mi_w;
+        row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
+@@ -59,7 +60,7 @@ void av1_set_ssim_rdmult(const AV1_COMP *const cpi, int *errorperbit,
+       num_of_mi += 1.0;
+     }
+   }
+-  geom_mean_of_scale = pow(geom_mean_of_scale, (1.0 / num_of_mi));
++  geom_mean_of_scale = pow(geom_mean_of_scale * cpi->oxcf.ssim_rd_mult / 100.0, (1.0 / num_of_mi));
+ 
+   *rdmult = (int)((double)(*rdmult) * geom_mean_of_scale + 0.5);
+   *rdmult = AOMMAX(*rdmult, 0);
+@@ -988,49 +989,6 @@ int av1_get_q_for_deltaq_objective(AV1_COMP *const cpi, ThreadData *td,
+   }
+   return qindex;
+ }
+-
+-#if !DISABLE_HDR_LUMA_DELTAQ
+-// offset table defined in Table3 of T-REC-H.Sup15 document.
+-static const int hdr_thres[HDR_QP_LEVELS + 1] = { 0,   301, 367, 434, 501, 567,
+-                                                  634, 701, 767, 834, 1024 };
+-
+-static const int hdr10_qp_offset[HDR_QP_LEVELS] = { 3,  2,  1,  0,  -1,
+-                                                    -2, -3, -4, -5, -6 };
+-#endif
+-
+-int av1_get_q_for_hdr(AV1_COMP *const cpi, MACROBLOCK *const x,
+-                      BLOCK_SIZE bsize, int mi_row, int mi_col) {
+-  AV1_COMMON *const cm = &cpi->common;
+-  assert(cm->seq_params->bit_depth == AOM_BITS_10);
+-
+-#if DISABLE_HDR_LUMA_DELTAQ
+-  (void)x;
+-  (void)bsize;
+-  (void)mi_row;
+-  (void)mi_col;
+-  return cm->quant_params.base_qindex;
+-#else
+-  // calculate pixel average
+-  const int block_luma_avg = av1_log_block_avg(cpi, x, bsize, mi_row, mi_col);
+-  // adjust offset based on average of the pixel block
+-  int offset = 0;
+-  for (int i = 0; i < HDR_QP_LEVELS; i++) {
+-    if (block_luma_avg >= hdr_thres[i] && block_luma_avg < hdr_thres[i + 1]) {
+-      offset = (int)(hdr10_qp_offset[i] * QP_SCALE_FACTOR);
+-      break;
+-    }
+-  }
+-
+-  const DeltaQInfo *const delta_q_info = &cm->delta_q_info;
+-  offset = AOMMIN(offset, delta_q_info->delta_q_res * 9 - 1);
+-  offset = AOMMAX(offset, -delta_q_info->delta_q_res * 9 + 1);
+-  int qindex = cm->quant_params.base_qindex + offset;
+-  qindex = AOMMIN(qindex, MAXQ);
+-  qindex = AOMMAX(qindex, MINQ);
+-
+-  return qindex;
+-#endif
+-}
+ #endif  // !CONFIG_REALTIME_ONLY
+ 
+ void av1_reset_simple_motion_tree_partition(SIMPLE_MOTION_DATA_TREE *sms_tree,
+diff --git a/av1/encoder/encodeframe_utils.h b/av1/encoder/encodeframe_utils.h
+index 46d36c85f..b44c22938 100644
+--- a/av1/encoder/encodeframe_utils.h
++++ b/av1/encoder/encodeframe_utils.h
+@@ -351,7 +351,7 @@ int av1_get_q_for_deltaq_objective(AV1_COMP *const cpi, ThreadData *td,
+                                    int64_t *delta_dist, BLOCK_SIZE bsize,
+                                    int mi_row, int mi_col);
+ 
+-int av1_get_q_for_hdr(AV1_COMP *const cpi, MACROBLOCK *const x,
++int av1_get_q_for_luma_q_bias(AV1_COMP *const cpi, MACROBLOCK *const x,
+                       BLOCK_SIZE bsize, int mi_row, int mi_col);
+ 
+ int av1_get_cb_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+diff --git a/av1/encoder/encoder.c b/av1/encoder/encoder.c
+index 8256e393f..f246bf505 100644
+--- a/av1/encoder/encoder.c
++++ b/av1/encoder/encoder.c
+@@ -3096,7 +3096,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
+     }
+   }
+ 
+-  av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
++  av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+                     q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
+                     cpi->oxcf.mode == ALLINTRA, cpi->oxcf.tune_cfg.tuning);
+   av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
+@@ -3111,7 +3111,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
+   if (cpi->sf.rt_sf.overshoot_detection_cbr == FAST_DETECTION_MAXQ &&
+       cpi->rc.high_source_sad) {
+     if (av1_encodedframe_overshoot_cbr(cpi, &q)) {
+-      av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
++      av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+                         q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
+                         cpi->oxcf.mode == ALLINTRA, cpi->oxcf.tune_cfg.tuning);
+       av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
+@@ -3286,13 +3286,23 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
+ #endif
+ 
+ #if !CONFIG_RD_COMMAND
+-  // Determine whether to use screen content tools using two fast encoding.
+-  if (!cpi->sf.hl_sf.disable_extra_sc_testing && !cpi->use_ducky_encode)
++  if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
++  cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
++    // Screen content optimizations are bad for Psy tuning,
++    // disable them and avoid the extra testing to speed us up.
++    FeatureFlags *const features = &cm->features;
++    features->allow_screen_content_tools = 0;
++    features->allow_intrabc = 0;
++    cpi->use_screen_content_tools = 0;
++    cpi->is_screen_content_type = 0;
++  } else if (!cpi->sf.hl_sf.disable_extra_sc_testing) {
++    // Determine whether to use screen content tools using two fast encoding.
+     av1_determine_sc_tools_with_encoding(cpi, q);
++  }
+ #endif  // !CONFIG_RD_COMMAND
+ 
+ #if CONFIG_TUNE_VMAF
+-  if (oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++  if ((oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1) {
+     av1_vmaf_neg_preprocessing(cpi, cpi->unscaled_source);
+   }
+ #endif
+@@ -3365,8 +3375,9 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
+     }
+ 
+ #if CONFIG_TUNE_VMAF
+-    if (oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-        oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++    if ((oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++         oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
++        oxcf->vmaf_quantization == 1) {
+       cpi->vmaf_info.original_qindex = q;
+       q = av1_get_vmaf_base_qindex(cpi, q);
+     }
+@@ -3422,7 +3433,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
+       }
+     }
+ 
+-    av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
++    av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+                       q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
+                       oxcf->mode == ALLINTRA, oxcf->tune_cfg.tuning);
+     av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
+@@ -3540,8 +3551,9 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
+     }
+ 
+ #if CONFIG_TUNE_VMAF
+-    if (oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-        oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++    if ((oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++         oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
++        oxcf->vmaf_quantization == 1) {
+       q = cpi->vmaf_info.original_qindex;
+     }
+ #endif
+@@ -4243,7 +4255,8 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size, uint8_t *dest,
+ 
+   if (oxcf->tune_cfg.tuning == AOM_TUNE_SSIM ||
+       oxcf->tune_cfg.tuning == AOM_TUNE_IQ ||
+-      oxcf->tune_cfg.tuning == AOM_TUNE_SSIMULACRA2) {
++      oxcf->tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
++      oxcf->tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY) {
+     av1_set_mb_ssim_rdmult_scaling(cpi);
+   }
+ #if CONFIG_SALIENCY_MAP
+@@ -4579,11 +4592,11 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
+ 
+ #if CONFIG_TUNE_VMAF
+   if (!is_stat_generation_stage(cpi) &&
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING) {
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 3)) {
+     av1_vmaf_frame_preprocessing(cpi, sd);
+   }
+   if (!is_stat_generation_stage(cpi) &&
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN) {
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 2)) {
+     av1_vmaf_blk_preprocessing(cpi, sd);
+   }
+ #endif
+diff --git a/av1/encoder/encoder.h b/av1/encoder/encoder.h
+index b31a7d9a4..a12ce8b98 100644
+--- a/av1/encoder/encoder.h
++++ b/av1/encoder/encoder.h
+@@ -91,13 +91,11 @@ extern "C" {
+ // Lookahead index threshold to enable temporal filtering for second arf.
+ #define TF_LOOKAHEAD_IDX_THR 7
+ 
+-#define HDR_QP_LEVELS 10
+-#define CHROMA_CB_QP_SCALE 1.04
+-#define CHROMA_CR_QP_SCALE 1.04
++#define CHROMA_CB_QP_SCALE 1.14
++#define CHROMA_CR_QP_SCALE 1.78
+ #define CHROMA_QP_SCALE -0.46
+ #define CHROMA_QP_OFFSET 9.26
+ #define QP_SCALE_FACTOR 2.0
+-#define DISABLE_HDR_LUMA_DELTAQ 1
+ 
+ // Rational number with an int64 numerator
+ // This structure holds a fractional value
+@@ -166,7 +164,7 @@ enum {
+   DELTA_Q_PERCEPTUAL = 2,     // Modulation to improve video perceptual quality
+   DELTA_Q_PERCEPTUAL_AI = 3,  // Perceptual quality opt for all intra mode
+   DELTA_Q_USER_RATING_BASED = 4,  // User rating based delta q mode
+-  DELTA_Q_HDR = 5,  // QP adjustment based on HDR block pixel average
++  DELTA_Q_HDR = 5,    // QP adjustment based on HDR block pixel average
+   DELTA_Q_VARIANCE_BOOST =
+       6,              // Variance Boost style modulation for all intra mode
+   DELTA_Q_MODE_COUNT  // This should always be the last member of the enum
+@@ -818,7 +816,7 @@ typedef struct {
+ /*!
+  * \brief Algorithm configuration parameters.
+  */
+-typedef struct {
++ typedef struct {
+   /*!
+    * Controls the level at which rate-distortion optimization of transform
+    * coefficients favors sharpness in the block. Has no impact on RD when set
+@@ -1119,6 +1117,24 @@ typedef struct AV1EncoderConfig {
+ 
+   // A flag to control if we enable the superblock qp sweep for a given lambda
+   int sb_qp_sweep;
++
++  int ssim_rd_mult;
++
++  int luma_bias;
++
++#if CONFIG_TUNE_VMAF
++  bool vmaf_quantization;
++
++  int vmaf_preprocessing;
++  bool override_preprocessing;
++
++  unsigned int ssim_vmaf_rd;
++#endif
++
++  BLOCK_SIZE vmaf_rd_bsize;
++  unsigned int vmaf_rd_resize;
++
++  unsigned int fast_decode;
+   /*!\endcond */
+ } AV1EncoderConfig;
+ 
+diff --git a/av1/encoder/encoder_utils.c b/av1/encoder/encoder_utils.c
+index 07f472279..7690feafd 100644
+--- a/av1/encoder/encoder_utils.c
++++ b/av1/encoder/encoder_utils.c
+@@ -1255,7 +1255,7 @@ void av1_determine_sc_tools_with_encoding(AV1_COMP *cpi, const int q_orig) {
+   // content tools, with a high q and fixed partition.
+   for (int pass = 0; pass < 2; ++pass) {
+     set_encoding_params_for_screen_content(cpi, pass);
+-    av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel,
++    av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel,
+                       q_for_screen_content_quick_run,
+                       q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
+                       oxcf->mode == ALLINTRA, oxcf->tune_cfg.tuning);
+@@ -1480,7 +1480,7 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
+   // Loop through each 16x16 block.
+   for (int row = 0; row < num_rows; ++row) {
+     for (int col = 0; col < num_cols; ++col) {
+-      double var = 0.0, num_of_var = 0.0;
++      double var = 0.0, num_of_var = 0.0, var_log = 0.0;
+       const int index = row * num_cols + col;
+ 
+       // Loop through each 8x8 block.
+@@ -1497,16 +1497,31 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
+           buf.buf = y_buffer + row_offset_y * y_stride + col_offset_y;
+           buf.stride = y_stride;
+ 
+-          var += av1_get_perpixel_variance_facade(cpi, xd, &buf, BLOCK_8X8,
+-                                                  AOM_PLANE_Y);
++          double blk_var;
++          blk_var = av1_get_perpixel_variance_facade(cpi, xd, &buf, BLOCK_8X8,
++                                                     AOM_PLANE_Y);
++          var_log += log(AOMMAX(blk_var, 1));
++          var += blk_var;
+           num_of_var += 1.0;
+         }
+       }
+-      var = var / num_of_var;
++      if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY) {
++        var = exp(var_log / num_of_var);
++        const int cq_level = cpi->oxcf.rc_cfg.cq_level;
++        const double hq_level = 30 * 4;
++        const double delta =
++            cq_level < hq_level
++                ? 2.0 * (double)(hq_level - cq_level) / hq_level
++                : 10.0 * (double)(cq_level - hq_level) / (MAXQ - hq_level);
++        // Curve fitting with an exponential model on user rating dataset.
++        var = 39.126 * (1 - exp(-0.0009413 * var)) + 1.236 + delta;
++      } else {
++        var = var / num_of_var;
+ 
+-      // Curve fitting with an exponential model on all 16x16 blocks from the
+-      // midres dataset.
+-      var = 67.035434 * (1 - exp(-0.0021489 * var)) + 17.492222;
++        // Curve fitting with an exponential model on all 16x16 blocks from the
++        // midres dataset.
++        var = 67.035434 * (1 - exp(-0.0021489 * var)) + 17.492222;
++      }
+ 
+       // As per the above computation, var will be in the range of
+       // [17.492222, 84.527656], assuming the data type is of infinite
+@@ -1518,17 +1533,58 @@ void av1_set_mb_ssim_rdmult_scaling(AV1_COMP *cpi) {
+       log_sum += log(var);
+     }
+   }
+-
+-  // As log_sum holds the geometric mean, it will be in the range
+-  // [17.492222, 84.527656]. Hence, in the below loop, the value of
+-  // cpi->ssim_rdmult_scaling_factors[index] would be in the range
+-  // [0.2069, 4.8323].
+-  log_sum = exp(log_sum / (double)(num_rows * num_cols));
+-
+-  for (int row = 0; row < num_rows; ++row) {
+-    for (int col = 0; col < num_cols; ++col) {
+-      const int index = row * num_cols + col;
+-      cpi->ssim_rdmult_scaling_factors[index] /= log_sum;
++  if ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY &&
++      cpi->oxcf.q_cfg.deltaq_mode != NO_DELTA_Q)) {
++    const int sb_size = cpi->common.seq_params->sb_size;
++    const int num_mi_w_sb = mi_size_wide[sb_size];
++    const int num_mi_h_sb = mi_size_high[sb_size];
++    const int num_cols_sb =
++        (mi_params->mi_cols + num_mi_w_sb - 1) / num_mi_w_sb;
++    const int num_rows_sb =
++        (mi_params->mi_rows + num_mi_h_sb - 1) / num_mi_h_sb;
++    const int num_blk_w = num_mi_w_sb / num_mi_w;
++    const int num_blk_h = num_mi_h_sb / num_mi_h;
++    assert(num_blk_w * num_mi_w == num_mi_w_sb);
++    assert(num_blk_h * num_mi_h == num_mi_h_sb);
++
++    for (int row = 0; row < num_rows_sb; ++row) {
++      for (int col = 0; col < num_cols_sb; ++col) {
++        double log_sum_sb = 0.0;
++        double blk_count = 0.0;
++        for (int blk_row = row * num_blk_h;
++             blk_row < (row + 1) * num_blk_h && blk_row < num_rows; ++blk_row) {
++          for (int blk_col = col * num_blk_w;
++               blk_col < (col + 1) * num_blk_w && blk_col < num_cols;
++               ++blk_col) {
++            const int index = blk_row * num_cols + blk_col;
++            log_sum_sb += log(cpi->ssim_rdmult_scaling_factors[index]);
++            blk_count += 1.0;
++          }
++        }
++        log_sum_sb = exp(log_sum_sb / blk_count);
++        for (int blk_row = row * num_blk_h;
++             blk_row < (row + 1) * num_blk_h && blk_row < num_rows; ++blk_row) {
++          for (int blk_col = col * num_blk_w;
++               blk_col < (col + 1) * num_blk_w && blk_col < num_cols;
++               ++blk_col) {
++            const int index = blk_row * num_cols + blk_col;
++            cpi->ssim_rdmult_scaling_factors[index] /= log_sum_sb;
++          }
++        }
++      }
++    }
++  } else {
++    // As log_sum holds the geometric mean, it will be in the range
++    // [17.492222, 84.527656]. Hence, in the below loop, the value of
++    // cpi->ssim_rdmult_scaling_factors[index] would be in the range
++    // [0.2069, 4.8323].
++    log_sum = exp(log_sum / (double)(num_rows * num_cols));
++
++    for (int row = 0; row < num_rows; ++row) {
++      for (int col = 0; col < num_cols; ++col) {
++        const int index = row * num_cols + col;
++        cpi->ssim_rdmult_scaling_factors[index] /= log_sum;
++      }
+     }
+   }
+ }
+diff --git a/av1/encoder/firstpass.c b/av1/encoder/firstpass.c
+index 572ff0ed2..b14df6de7 100644
+--- a/av1/encoder/firstpass.c
++++ b/av1/encoder/firstpass.c
+@@ -1367,7 +1367,7 @@ void av1_first_pass(AV1_COMP *cpi, const int64_t ts_duration) {
+   cpi->rc.frames_to_key = INT_MAX;
+ 
+   av1_set_quantizer(
+-      cm, cpi->oxcf.q_cfg.qm_minlevel, cpi->oxcf.q_cfg.qm_maxlevel, qindex,
++      cpi, cpi->oxcf.q_cfg.qm_minlevel, cpi->oxcf.q_cfg.qm_maxlevel, qindex,
+       cpi->oxcf.q_cfg.enable_chroma_deltaq, cpi->oxcf.q_cfg.enable_hdr_deltaq,
+       cpi->oxcf.mode == ALLINTRA, cpi->oxcf.tune_cfg.tuning);
+ 
+diff --git a/av1/encoder/intra_mode_search.c b/av1/encoder/intra_mode_search.c
+index e8904c7d0..b8bc2c818 100644
+--- a/av1/encoder/intra_mode_search.c
++++ b/av1/encoder/intra_mode_search.c
+@@ -284,7 +284,9 @@ static int rd_pick_filter_intra_sby(const AV1_COMP *const cpi, MACROBLOCK *x,
+     this_rd = RDCOST(x->rdmult, this_rate, tokenonly_rd_stats.dist);
+ 
+     // Visual quality adjustment based on recon vs source variance.
+-    if ((cpi->oxcf.mode == ALLINTRA) && (this_rd != INT64_MAX)) {
++    if ((cpi->oxcf.mode == ALLINTRA || cpi->oxcf.tune_cfg.content ==
++    AOM_CONTENT_PSY || cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) &&
++    this_rd != INT64_MAX) {
+       this_rd = (int64_t)(this_rd * intra_rd_variance_factor(cpi, x, bsize));
+     }
+ 
+@@ -1664,7 +1666,9 @@ int64_t av1_rd_pick_intra_sby_mode(const AV1_COMP *const cpi, MACROBLOCK *x,
+     this_rd = RDCOST(x->rdmult, this_rate, this_distortion);
+ 
+     // Visual quality adjustment based on recon vs source variance.
+-    if ((cpi->oxcf.mode == ALLINTRA) && (this_rd != INT64_MAX)) {
++    if ((cpi->oxcf.mode == ALLINTRA || cpi->oxcf.tune_cfg.content ==
++    AOM_CONTENT_PSY || cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) &&
++    this_rd != INT64_MAX) {
+       this_rd = (int64_t)(this_rd * intra_rd_variance_factor(cpi, x, bsize));
+     }
+ 
+diff --git a/av1/encoder/intra_mode_search_utils.h b/av1/encoder/intra_mode_search_utils.h
+index 720aec2a1..ea61727e2 100644
+--- a/av1/encoder/intra_mode_search_utils.h
++++ b/av1/encoder/intra_mode_search_utils.h
+@@ -460,7 +460,10 @@ int av1_calc_normalized_variance(aom_variance_fn_t vf, const uint8_t *const buf,
+ static inline bool is_src_var_for_4x4_sub_blocks_caching_enabled(
+     const AV1_COMP *const cpi) {
+   const SPEED_FEATURES *const sf = &cpi->sf;
+-  if (cpi->oxcf.mode != ALLINTRA) return false;
++  if (cpi->oxcf.mode != ALLINTRA &&
++      cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY &&
++      cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101)
++    return false;
+ 
+   if (sf->part_sf.partition_search_type == SEARCH_PARTITION) return true;
+ 
+diff --git a/av1/encoder/lookahead.h b/av1/encoder/lookahead.h
+index f6a3224f5..02e77bf1d 100644
+--- a/av1/encoder/lookahead.h
++++ b/av1/encoder/lookahead.h
+@@ -25,8 +25,8 @@ extern "C" {
+ #endif
+ 
+ /*!\cond */
+-#define MAX_LAG_BUFFERS 48
+-#define MAX_LAP_BUFFERS 48
++#define MAX_LAG_BUFFERS 128
++#define MAX_LAP_BUFFERS 128
+ #define MAX_TOTAL_BUFFERS (MAX_LAG_BUFFERS + MAX_LAP_BUFFERS)
+ #define LAP_LAG_IN_FRAMES 17
+ 
+diff --git a/av1/encoder/partition_search.c b/av1/encoder/partition_search.c
+index 81ac00be2..c02de05d3 100644
+--- a/av1/encoder/partition_search.c
++++ b/av1/encoder/partition_search.c
+@@ -617,7 +617,8 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+ 
+   if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM ||
+       cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2) {
++      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
++      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY) {
+     av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                         &x->rdmult);
+   }
+@@ -632,7 +633,26 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+   else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITHOUT_PREPROCESSING ||
+            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN ||
+            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+-    av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
++    int vmaf_rdmult = x->rdmult;
++    int ssim_rdmult = x->rdmult;
++
++    if (cpi->oxcf.ssim_vmaf_rd < 100) {
++      av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &vmaf_rdmult);
++    }
++
++    if (cpi->oxcf.ssim_vmaf_rd > 0 && cpi->oxcf.ssim_vmaf_rd < 100) {
++      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
++                          &ssim_rdmult);
++      float ssim_factor = (float)cpi->oxcf.ssim_vmaf_rd / 100.0f;
++      x->rdmult =
++          (int)((1.0f - ssim_factor) * vmaf_rdmult + ssim_factor * ssim_rdmult);
++    } else if (cpi->oxcf.ssim_vmaf_rd == 100) {
++      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
++                          &ssim_rdmult);
++      x->rdmult = ssim_rdmult;
++    } else {
++      x->rdmult = vmaf_rdmult;
++    }
+   }
+ #endif
+ #if CONFIG_TUNE_BUTTERAUGLI
+@@ -640,10 +660,44 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+     av1_set_butteraugli_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
+   }
+ #endif
+-  if (cpi->oxcf.mode == ALLINTRA) {
++  if (cpi->oxcf.mode == ALLINTRA ||
++      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
++      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
+     x->rdmult = (int)(((int64_t)x->rdmult * x->intra_sb_rdmult_modifier) >> 7);
+   }
+ 
++  if (cpi->oxcf.luma_bias != 0 &&
++      cpi->oxcf.color_cfg.transfer_characteristics != AOM_CICP_TC_SMPTE_2084 &&
++      cpi->oxcf.color_cfg.transfer_characteristics != AOM_CICP_TC_LOG_100 &&
++      cpi->oxcf.color_cfg.transfer_characteristics !=
++          AOM_CICP_TC_LOG_100_SQRT10) {
++    const double M1 = 2610.0 / 4096 / 4;
++    const double M2 = 2523.0 / 4096 * 128;
++    const double C1 = 3424.0 / 4096;
++    const double C2 = 2413.0 / 4096 * 32;
++    const double C3 = 2392.0 / 4096 * 32;
++
++    const float peak = 255;
++    const float gamma = 2.2f;
++
++    double luma_avg = av1_log_block_avg(x, bsize) / 255.0f;
++
++    const double pq_min = pow(0.0001f / peak, 1.0f / gamma);
++    if (luma_avg < pq_min)
++      luma_avg = pq_min;
++
++    const double a = pow(peak / 10000, M1);
++    const double pq_factor = 1 / pow((C1 + C2 * a) / (1 + C3 * a), M2);
++
++    const double B = pow(10000, M1);
++    double c = pow(peak * pow(luma_avg, gamma), M1);
++    double d = C3 * c + B;
++    double luma_adjustment = B * M1 * M2 * pq_factor * gamma * (C2 - C1 * C3) *
++                             c * pow((C1 * B + C2 * c) / d, M2 - 1) /
++                             (luma_avg * pow(d, 2));
++    x->rdmult = (int)(x->rdmult - log2(luma_adjustment) *  cpi->oxcf.luma_bias);
++  }
++
+   // Check to make sure that the adjustments above have not caused the
+   // rd multiplier to be truncated to 0.
+   x->rdmult = (x->rdmult > 0) ? x->rdmult : 1;
+@@ -5569,7 +5623,9 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
+   // Set buffers and offsets.
+   av1_set_offsets(cpi, tile_info, x, mi_row, mi_col, bsize);
+ 
+-  if (cpi->oxcf.mode == ALLINTRA) {
++  if (cpi->oxcf.mode == ALLINTRA ||
++      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
++      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
+     if (bsize == cm->seq_params->sb_size) {
+       double var_min, var_max;
+       log_sub_block_var(cpi, x, bsize, &var_min, &var_max);
+diff --git a/av1/encoder/pass2_strategy.c b/av1/encoder/pass2_strategy.c
+index a109109e1..13f42528d 100644
+--- a/av1/encoder/pass2_strategy.c
++++ b/av1/encoder/pass2_strategy.c
+@@ -4238,8 +4238,9 @@ void av1_twopass_postencode_update(AV1_COMP *cpi) {
+       p_rc->active_best_quality[i] = cpi->common.quant_params.base_qindex;
+ #if CONFIG_TUNE_VMAF
+       if (cpi->vmaf_info.original_qindex != -1 &&
+-          (cpi->oxcf.tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+-           cpi->oxcf.tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN)) {
++          ((cpi->oxcf.tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
++            cpi->oxcf.tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
++           cpi->oxcf.vmaf_quantization == 1)) {
+         p_rc->active_best_quality[i] = cpi->vmaf_info.original_qindex;
+       }
+ #endif
+diff --git a/av1/encoder/speed_features.c b/av1/encoder/speed_features.c
+index 84503dd7a..52d7d7382 100644
+--- a/av1/encoder/speed_features.c
++++ b/av1/encoder/speed_features.c
+@@ -479,7 +479,7 @@ static void set_allintra_speed_features_framesize_independent(
+     // For screen content, "prune_sgr_based_on_wiener = 2" cause large quality
+     // loss.
+     sf->lpf_sf.prune_sgr_based_on_wiener = allow_screen_content_tools ? 1 : 2;
+-    sf->lpf_sf.disable_loop_restoration_chroma = 0;
++    sf->lpf_sf.disable_loop_restoration_chroma = 1;
+     sf->lpf_sf.reduce_wiener_window_size = 1;
+     sf->lpf_sf.prune_wiener_based_on_src_var = 2;
+   }
+@@ -1119,7 +1119,7 @@ static void set_good_speed_features_framesize_independent(
+   sf->tx_sf.model_based_prune_tx_search_level = 1;
+   sf->tx_sf.tx_type_search.use_reduced_intra_txset = 1;
+ 
+-  sf->tpl_sf.search_method = NSTEP_8PT;
++  sf->tpl_sf.search_method = BIGDIA;
+ 
+   sf->rt_sf.use_nonrd_pick_mode = 0;
+   sf->rt_sf.discount_color_cost = 0;
+@@ -1237,14 +1237,13 @@ static void set_good_speed_features_framesize_independent(
+     sf->intra_sf.skip_filter_intra_in_inter_frames = 1;
+ 
+     sf->tpl_sf.prune_starting_mv = 1;
+-    sf->tpl_sf.search_method = DIAMOND;
++    sf->tpl_sf.search_method = FAST_BIGDIA;
+ 
+     sf->rd_sf.perform_coeff_opt = is_boosted_arf2_bwd_type ? 3 : 4;
+     sf->rd_sf.use_mb_rd_hash = 1;
+ 
+     sf->lpf_sf.prune_wiener_based_on_src_var = 1;
+     sf->lpf_sf.prune_sgr_based_on_wiener = 1;
+-    sf->lpf_sf.disable_loop_restoration_chroma = boosted ? 0 : 1;
+     sf->lpf_sf.reduce_wiener_window_size = boosted ? 0 : 1;
+ 
+     // TODO(any): Re-evaluate this feature set to 1 in speed 2.
+@@ -1371,7 +1370,6 @@ static void set_good_speed_features_framesize_independent(
+     sf->mv_sf.prune_mesh_search = PRUNE_MESH_SEARCH_LVL_2;
+ 
+     sf->tpl_sf.subpel_force_stop = HALF_PEL;
+-    sf->tpl_sf.search_method = FAST_BIGDIA;
+     sf->tpl_sf.use_sad_for_mode_decision = 1;
+ 
+     sf->tx_sf.tx_type_search.fast_intra_tx_type_search = 1;
+@@ -2638,7 +2636,7 @@ void av1_set_speed_features_framesize_independent(AV1_COMP *cpi, int speed) {
+         (sf->inter_sf.use_dist_wtd_comp_flag != DIST_WTD_COMP_DISABLED);
+     cpi->common.seq_params->enable_dual_filter &=
+         !sf->interp_sf.disable_dual_filter;
+-    // Set the flag 'enable_restoration', if one the Loop restoration filters
++    // Set the flag 'enable_restoration', if one of the Loop restoration filters
+     // (i.e., Wiener or Self-guided) is enabled.
+     cpi->common.seq_params->enable_restoration &=
+         (!sf->lpf_sf.disable_wiener_filter || !sf->lpf_sf.disable_sgr_filter);
+diff --git a/av1/encoder/temporal_filter.h b/av1/encoder/temporal_filter.h
+index 9585942c3..2c942a9f4 100644
+--- a/av1/encoder/temporal_filter.h
++++ b/av1/encoder/temporal_filter.h
+@@ -52,7 +52,7 @@ static const double SQRT_PI_BY_2 = 1.25331413732;
+ //    strength such that more detailed information can be preserved. Hence, when
+ //    q is smaller than this threshold, we will adjust the filtering weight
+ //    based on the q-value.
+-#define TF_Q_DECAY_THRESHOLD 20
++#define TF_Q_DECAY_THRESHOLD 10
+ // 3. Normalization factor used to normalize the motion search error. Since the
+ //    motion search error can be large and uncontrollable, we will simply
+ //    normalize it before using it to compute the filtering weight.
+diff --git a/av1/encoder/tune_butteraugli.c b/av1/encoder/tune_butteraugli.c
+index c1d6d7e0b..4af9c69cd 100644
+--- a/av1/encoder/tune_butteraugli.c
++++ b/av1/encoder/tune_butteraugli.c
+@@ -298,7 +298,7 @@ void av1_setup_butteraugli_rdmult(AV1_COMP *cpi) {
+   // cpi->sf.part_sf.partition_search_type = FIXED_PARTITION;
+   // cpi->sf.part_sf.fixed_partition_size = BLOCK_32X32;
+ 
+-  av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q_index,
++  av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q_index,
+                     q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
+                     oxcf->mode == ALLINTRA, oxcf->tune_cfg.tuning);
+   av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
+diff --git a/av1/encoder/tune_vmaf.c b/av1/encoder/tune_vmaf.c
+index 778420270..8da6a9ae2 100644
+--- a/av1/encoder/tune_vmaf.c
++++ b/av1/encoder/tune_vmaf.c
+@@ -296,7 +296,7 @@ static inline double cal_approx_vmaf(
+     const YV12_BUFFER_CONFIG *const sharpened) {
+   const int bit_depth = cpi->td.mb.e_mbd.bd;
+   const bool cal_vmaf_neg =
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN;
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1;
+   double new_vmaf;
+ 
+   aom_calc_vmaf(cpi->vmaf_info.vmaf_model, source, sharpened, bit_depth,
+@@ -611,8 +611,12 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
+   AV1_COMMON *cm = &cpi->common;
+   const int y_width = cpi->source->y_width;
+   const int y_height = cpi->source->y_height;
+-  const int resized_block_size = BLOCK_32X32;
+-  const int resize_factor = 2;
++  const int resized_block_size = cpi->oxcf.vmaf_rd_bsize;
++  const int resize_factor = (cpi->oxcf.vmaf_rd_resize == 0) ? 1 :
++                            (cpi->oxcf.vmaf_rd_resize == 1) ? 2 :
++                            (cpi->oxcf.vmaf_rd_resize == 2) ? 4 :
++                            (cpi->oxcf.vmaf_rd_resize == 3) ? 8 : 2;
++  cpi->vmaf_info.resize_factor = resize_factor;
+   const int bit_depth = cpi->td.mb.e_mbd.bd;
+   const int ss_x = cpi->source->subsampling_x;
+   const int ss_y = cpi->source->subsampling_y;
+@@ -656,7 +660,7 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
+ 
+   VmafContext *vmaf_context;
+   const bool cal_vmaf_neg =
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN;
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1;
+   aom_init_vmaf_context(&vmaf_context, cpi->vmaf_info.vmaf_model, cal_vmaf_neg);
+   unsigned int *sses = aom_calloc(num_rows * num_cols, sizeof(*sses));
+   if (!sses) {
+@@ -716,22 +720,10 @@ void av1_set_mb_vmaf_rdmult_scaling(AV1_COMP *cpi) {
+   for (int row = 0; row < num_rows; ++row) {
+     for (int col = 0; col < num_cols; ++col) {
+       const int index = row * num_cols + col;
+-      const double vmaf = aom_calc_vmaf_at_index(
+-          vmaf_context, cpi->vmaf_info.vmaf_model, index);
+-      const double dvmaf = kBaselineVmaf - vmaf;
+-
+-      const double mse =
+-          (double)sses[index] / (double)(resized_y_width * resized_y_height);
+       double weight;
+-      const double eps = 0.01 / (num_rows * num_cols);
+-      if (dvmaf < eps || mse < eps) {
+-        weight = 1.0;
+-      } else {
+-        weight = mse / dvmaf;
+-      }
+ 
+-      // Normalize it with a data fitted model.
+-      weight = 6.0 * (1.0 - exp(-0.05 * weight)) + 0.8;
++      // Normalize weight with a data fitted model.
++      weight = 6.0 * (1.0 - exp(-0.05)) + 0.8;
+       cpi->vmaf_info.rdmult_scaling_factors[index] = weight;
+     }
+   }
+@@ -746,6 +738,7 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+                          const BLOCK_SIZE bsize, const int mi_row,
+                          const int mi_col, int *const rdmult) {
+   const AV1_COMMON *const cm = &cpi->common;
++  const int resize_factor = cpi->vmaf_info.resize_factor;
+ 
+   const int bsize_base = BLOCK_64X64;
+   const int num_mi_w = mi_size_wide[bsize_base];
+@@ -754,6 +747,7 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+   const int num_rows = (cm->mi_params.mi_rows + num_mi_h - 1) / num_mi_h;
+   const int num_bcols = (mi_size_wide[bsize] + num_mi_w - 1) / num_mi_w;
+   const int num_brows = (mi_size_high[bsize] + num_mi_h - 1) / num_mi_h;
++
+   int row, col;
+   double num_of_mi = 0.0;
+   double geom_mean_of_scale = 0.0;
+@@ -762,127 +756,36 @@ void av1_set_vmaf_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
+        row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
+     for (col = mi_col / num_mi_h;
+          col < num_cols && col < mi_col / num_mi_h + num_bcols; ++col) {
+-      const int index = row * num_cols + col;
+-      geom_mean_of_scale += log(cpi->vmaf_info.rdmult_scaling_factors[index]);
+-      num_of_mi += 1.0;
+-    }
+-  }
+-  geom_mean_of_scale = exp(geom_mean_of_scale / num_of_mi);
+-
+-  *rdmult = (int)((double)(*rdmult) * geom_mean_of_scale + 0.5);
+-  *rdmult = AOMMAX(*rdmult, 0);
+-  av1_set_error_per_bit(&x->errorperbit, *rdmult);
+-}
+-
+-// TODO(sdeng): replace them with the SIMD versions.
+-static inline double highbd_image_sad_c(const uint16_t *src, int src_stride,
+-                                        const uint16_t *ref, int ref_stride,
+-                                        int w, int h) {
+-  double accum = 0.0;
+-  int i, j;
+-
+-  for (i = 0; i < h; ++i) {
+-    for (j = 0; j < w; ++j) {
+-      double img1px = src[i * src_stride + j];
+-      double img2px = ref[i * ref_stride + j];
+-
+-      accum += fabs(img1px - img2px);
+-    }
+-  }
+-
+-  return accum / (double)(h * w);
+-}
+-
+-static inline double image_sad_c(const uint8_t *src, int src_stride,
+-                                 const uint8_t *ref, int ref_stride, int w,
+-                                 int h) {
+-  double accum = 0.0;
+-  int i, j;
+-
+-  for (i = 0; i < h; ++i) {
+-    for (j = 0; j < w; ++j) {
+-      double img1px = src[i * src_stride + j];
+-      double img2px = ref[i * ref_stride + j];
+-
+-      accum += fabs(img1px - img2px);
++      int resized_row = row / resize_factor;
++      int resized_col = col / resize_factor;
++      int resized_index =
++          resized_row * (num_cols / resize_factor) + resized_col;
++
++      if (resized_index <
++          num_rows * num_cols / (resize_factor * resize_factor)) {
++        double scale_factor =
++            cpi->vmaf_info.rdmult_scaling_factors[resized_index];
++        scale_factor = pow(scale_factor, 1.0 / (resize_factor * resize_factor));
++        geom_mean_of_scale += log(scale_factor);
++        num_of_mi += 1.0;
++      }
+     }
+   }
+ 
+-  return accum / (double)(h * w);
+-}
+-
+-static double calc_vmaf_motion_score(const AV1_COMP *const cpi,
+-                                     const AV1_COMMON *const cm,
+-                                     const YV12_BUFFER_CONFIG *const cur,
+-                                     const YV12_BUFFER_CONFIG *const last,
+-                                     const YV12_BUFFER_CONFIG *const next) {
+-  const int y_width = cur->y_width;
+-  const int y_height = cur->y_height;
+-  YV12_BUFFER_CONFIG blurred_cur, blurred_last, blurred_next;
+-  const int bit_depth = cpi->td.mb.e_mbd.bd;
+-  const int ss_x = cur->subsampling_x;
+-  const int ss_y = cur->subsampling_y;
+-
+-  memset(&blurred_cur, 0, sizeof(blurred_cur));
+-  memset(&blurred_last, 0, sizeof(blurred_last));
+-  memset(&blurred_next, 0, sizeof(blurred_next));
+-
+-  aom_alloc_frame_buffer(&blurred_cur, y_width, y_height, ss_x, ss_y,
+-                         cm->seq_params->use_highbitdepth,
+-                         cpi->oxcf.border_in_pixels,
+-                         cm->features.byte_alignment, false, 0);
+-  aom_alloc_frame_buffer(&blurred_last, y_width, y_height, ss_x, ss_y,
+-                         cm->seq_params->use_highbitdepth,
+-                         cpi->oxcf.border_in_pixels,
+-                         cm->features.byte_alignment, false, 0);
+-  aom_alloc_frame_buffer(&blurred_next, y_width, y_height, ss_x, ss_y,
+-                         cm->seq_params->use_highbitdepth,
+-                         cpi->oxcf.border_in_pixels,
+-                         cm->features.byte_alignment, false, 0);
+-
+-  gaussian_blur(bit_depth, cur, &blurred_cur);
+-  gaussian_blur(bit_depth, last, &blurred_last);
+-  if (next) gaussian_blur(bit_depth, next, &blurred_next);
+-
+-  double motion1, motion2 = 65536.0;
+-  if (cm->seq_params->use_highbitdepth) {
+-    assert(blurred_cur.flags & YV12_FLAG_HIGHBITDEPTH);
+-    assert(blurred_last.flags & YV12_FLAG_HIGHBITDEPTH);
+-    const float scale_factor = 1.0f / (float)(1 << (bit_depth - 8));
+-    motion1 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
+-                                 blurred_cur.y_stride,
+-                                 CONVERT_TO_SHORTPTR(blurred_last.y_buffer),
+-                                 blurred_last.y_stride, y_width, y_height) *
+-              scale_factor;
+-    if (next) {
+-      assert(blurred_next.flags & YV12_FLAG_HIGHBITDEPTH);
+-      motion2 = highbd_image_sad_c(CONVERT_TO_SHORTPTR(blurred_cur.y_buffer),
+-                                   blurred_cur.y_stride,
+-                                   CONVERT_TO_SHORTPTR(blurred_next.y_buffer),
+-                                   blurred_next.y_stride, y_width, y_height) *
+-                scale_factor;
+-    }
++  if (num_of_mi > 0) {
++    geom_mean_of_scale = exp(geom_mean_of_scale / num_of_mi);
+   } else {
+-    motion1 = image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
+-                          blurred_last.y_buffer, blurred_last.y_stride, y_width,
+-                          y_height);
+-    if (next) {
+-      motion2 = image_sad_c(blurred_cur.y_buffer, blurred_cur.y_stride,
+-                            blurred_next.y_buffer, blurred_next.y_stride,
+-                            y_width, y_height);
+-    }
++    geom_mean_of_scale = 1.0;
+   }
+ 
+-  aom_free_frame_buffer(&blurred_cur);
+-  aom_free_frame_buffer(&blurred_last);
+-  aom_free_frame_buffer(&blurred_next);
+-
+-  return AOMMIN(motion1, motion2);
++  *rdmult = (int)((double)(*rdmult) * geom_mean_of_scale + 0.5);
++  *rdmult = AOMMAX(*rdmult, 0);
++  av1_set_error_per_bit(&x->errorperbit, *rdmult);
+ }
+ 
+ static inline void get_neighbor_frames(const AV1_COMP *const cpi,
+-                                       const YV12_BUFFER_CONFIG **last,
+-                                       const YV12_BUFFER_CONFIG **next) {
++                                           const YV12_BUFFER_CONFIG **last,
++                                           const YV12_BUFFER_CONFIG **next) {
+   const AV1_COMMON *const cm = &cpi->common;
+   const GF_GROUP *gf_group = &cpi->ppi->gf_group;
+   const int src_index =
+@@ -895,9 +798,6 @@ static inline void get_neighbor_frames(const AV1_COMP *const cpi,
+   *last = cm->show_frame ? cpi->last_source : &last_entry->img;
+ }
+ 
+-// Calculates the new qindex from the VMAF motion score. This is based on the
+-// observation: when the motion score becomes higher, the VMAF score of the
+-// same source and distorted frames would become higher.
+ int av1_get_vmaf_base_qindex(const AV1_COMP *const cpi, int current_qindex) {
+   const AV1_COMMON *const cm = &cpi->common;
+   if (cm->current_frame.frame_number == 0 || cpi->oxcf.pass == 1) {
+@@ -920,31 +820,7 @@ int av1_get_vmaf_base_qindex(const AV1_COMP *const cpi, int current_qindex) {
+   if (approx_sse < sse_threshold || approx_dvmaf < vmaf_threshold) {
+     return current_qindex;
+   }
+-  const YV12_BUFFER_CONFIG *cur_buf = cpi->source;
+-  if (cm->show_frame == 0) {
+-    const int src_index = gf_group->arf_src_offset[cpi->gf_frame_index];
+-    struct lookahead_entry *cur_entry = av1_lookahead_peek(
+-        cpi->ppi->lookahead, src_index, cpi->compressor_stage);
+-    cur_buf = &cur_entry->img;
+-  }
+-  assert(cur_buf);
+-
+-  const YV12_BUFFER_CONFIG *next_buf, *last_buf;
+-  get_neighbor_frames(cpi, &last_buf, &next_buf);
+-  assert(last_buf);
+-
+-  const double motion =
+-      calc_vmaf_motion_score(cpi, cm, cur_buf, last_buf, next_buf);
+-
+-  // Get dVMAF through a data fitted model.
+-  const double dvmaf = 26.11 * (1.0 - exp(-0.06 * motion));
+-  const double dsse = dvmaf * approx_sse / approx_dvmaf;
+-
+-  // Clamping beta to address VQ issue (aomedia:3170).
+-  const double beta = AOMMAX(approx_sse / (dsse + approx_sse), 0.5);
+-  const int offset =
+-      av1_get_deltaq_offset(cm->seq_params->bit_depth, current_qindex, beta);
+-  const int qindex = clamp(current_qindex + offset, MINQ, MAXQ);
++  const int qindex = clamp(current_qindex, MINQ, MAXQ);
+ 
+   return qindex;
+ }
+@@ -956,7 +832,7 @@ static inline double cal_approx_score(
+   double score;
+   const uint32_t bit_depth = cpi->td.mb.e_mbd.bd;
+   const bool cal_vmaf_neg =
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN;
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1;
+   aom_calc_vmaf(cpi->vmaf_info.vmaf_model, src, recon_sharpened, bit_depth,
+                 cal_vmaf_neg, &score);
+   return src_variance / new_variance * (score - src_score);
+@@ -1082,7 +958,7 @@ void av1_update_vmaf_curve(AV1_COMP *cpi) {
+       AOMMIN(gf_group->layer_depth[cpi->gf_frame_index], MAX_ARF_LAYERS - 1);
+   double base_score;
+   const bool cal_vmaf_neg =
+-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN;
++      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1;
+   aom_calc_vmaf(cpi->vmaf_info.vmaf_model, source, recon, bit_depth,
+                 cal_vmaf_neg, &base_score);
+   cpi->vmaf_info.last_frame_vmaf[layer_depth] = base_score;
+@@ -1096,7 +972,7 @@ void av1_update_vmaf_curve(AV1_COMP *cpi) {
+         (double)aom_get_y_sse(source, recon);
+   }
+ 
+-  if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
++  if (((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1) {
+     const YV12_BUFFER_CONFIG *last, *next;
+     get_neighbor_frames(cpi, &last, &next);
+     double best_unsharp_amount_start =
+diff --git a/av1/encoder/tune_vmaf.h b/av1/encoder/tune_vmaf.h
+index 7e01435e4..9d125a2f8 100644
+--- a/av1/encoder/tune_vmaf.h
++++ b/av1/encoder/tune_vmaf.h
+@@ -38,6 +38,9 @@ typedef struct {
+ 
+   // VMAF model used in VMAF caculations.
+   VmafModel *vmaf_model;
++
++  // Stores the resize factor used in VMAF calculations
++  int resize_factor;
+ } TuneVMAFInfo;
+ 
+ struct AV1_COMP;
+diff --git a/av1/encoder/tx_search.c b/av1/encoder/tx_search.c
+index 334bce15a..c47759f77 100644
+--- a/av1/encoder/tx_search.c
++++ b/av1/encoder/tx_search.c
+@@ -2111,7 +2111,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
+       // Any 64-pt transforms only preserves half the coefficients.
+       // Therefore transform domain distortion is not valid for these
+       // transform sizes.
+-      (txsize_sqr_up_map[tx_size] != TX_64X64) &&
++      txsize_sqr_up_map[tx_size] != TX_64X64 &&
+       // Use pixel domain distortion for DC only blocks
+       !dc_only_blk;
+   // Flag to indicate if an extra calculation of distortion in the pixel domain
+diff --git a/av1/encoder/txb_rdopt.c b/av1/encoder/txb_rdopt.c
+index 6f0fdff42..3678714c7 100644
+--- a/av1/encoder/txb_rdopt.c
++++ b/av1/encoder/txb_rdopt.c
+@@ -128,13 +128,14 @@ static AOM_FORCE_INLINE void update_coeff_simple(
+ }
+ 
+ static AOM_FORCE_INLINE void update_coeff_eob(
+-    int *accu_rate, int64_t *accu_dist, int *eob, int *nz_num, int *nz_ci,
+-    int si, TX_SIZE tx_size, TX_CLASS tx_class, int bhl, int width,
+-    int dc_sign_ctx, int64_t rdmult, int shift, const int16_t *dequant,
+-    const int16_t *scan, const LV_MAP_EOB_COST *txb_eob_costs,
+-    const LV_MAP_COEFF_COST *txb_costs, const tran_low_t *tcoeff,
+-    tran_low_t *qcoeff, tran_low_t *dqcoeff, uint8_t *levels, int sharpness,
+-    const qm_val_t *iqmatrix, const qm_val_t *qmatrix) {
++    const struct AV1_COMP *cpi, int *accu_rate, int64_t *accu_dist, int *eob,
++    int *nz_num, int *nz_ci, int si, TX_SIZE tx_size, TX_CLASS tx_class,
++    int bhl, int width, int dc_sign_ctx, int64_t rdmult, int shift,
++    const int16_t *dequant, const int16_t *scan,
++    const LV_MAP_EOB_COST *txb_eob_costs, const LV_MAP_COEFF_COST *txb_costs,
++    const tran_low_t *tcoeff, tran_low_t *qcoeff, tran_low_t *dqcoeff,
++    uint8_t *levels, int sharpness, const qm_val_t *iqmatrix,
++    const qm_val_t *qmatrix) {
+   const int dqv = get_dqv(dequant, scan[si], iqmatrix);
+   assert(si != *eob - 1);
+   const int ci = scan[si];
+@@ -208,7 +209,7 @@ static AOM_FORCE_INLINE void update_coeff_eob(
+     const int qc_threshold = (si <= 5) ? 2 : 1;
+     const int allow_lower_qc = sharpness ? abs_qc > qc_threshold : 1;
+ 
+-    if (allow_lower_qc) {
++    if (allow_lower_qc && cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
+       if (rd_low < rd) {
+         lower_level = 1;
+         rd = rd_low;
+@@ -217,7 +218,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
+       }
+     }
+ 
+-    if ((sharpness == 0 || new_eob >= 5) && rd_new_eob < rd) {
++    if ((sharpness == 0 || new_eob >= 5) && rd_new_eob < rd &&
++        cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
+       for (int ni = 0; ni < *nz_num; ++ni) {
+         int last_ci = nz_ci[ni];
+         levels[get_padded_idx(last_ci, bhl)] = 0;
+@@ -342,16 +344,16 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
+   const LV_MAP_EOB_COST *txb_eob_costs =
+       &coeff_costs->eob_costs[eob_multi_size][plane_type];
+ 
+-  // For the IQ and SSIMULACRA 2 tunings, increase rshift from 2 to 4.
++  // For the IQ and SSIMULACRA 2 tunings, increase rshift from 5 to 7.
+   // This biases trellis quantization towards keeping more coefficients, and
+   // together with the IQ and SSIMULACRA2 rdmult adjustment in
+   // av1_compute_rd_mult_based_on_qindex(), this helps preserve image
+   // features (like repeating patterns and camera noise/film grain), which
+   // improves SSIMULACRA 2 scores.
+   const int rshift = (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
+-                      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2)
+-                         ? 7
+-                         : 5;
++    cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2)
++       ? 7
++       : 5;
+ 
+   const int64_t rdmult = ROUND_POWER_OF_TWO(
+       (int64_t)x->rdmult * (8 - sharpness) *
+@@ -398,15 +400,15 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
+     --si;
+   }
+ 
+-#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                            \
+-  case tx_class_literal:                                                   \
+-    for (; si >= 0 && nz_num <= max_nz_num; --si) {                        \
+-      update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si,   \
+-                       tx_size, tx_class_literal, bhl, width,              \
+-                       txb_ctx->dc_sign_ctx, rdmult, shift, dequant, scan, \
+-                       txb_eob_costs, txb_costs, tcoeff, qcoeff, dqcoeff,  \
+-                       levels, sharpness, iqmatrix, qmatrix);              \
+-    }                                                                      \
++#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                               \
++  case tx_class_literal:                                                      \
++    for (; si >= 0 && nz_num <= max_nz_num; --si) {                           \
++      update_coeff_eob(cpi, &accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si, \
++                       tx_size, tx_class_literal, bhl, width,                 \
++                       txb_ctx->dc_sign_ctx, rdmult, shift, dequant, scan,    \
++                       txb_eob_costs, txb_costs, tcoeff, qcoeff, dqcoeff,     \
++                       levels, sharpness, iqmatrix, qmatrix);                 \
++    }                                                                         \
+     break
+   switch (tx_class) {
+     UPDATE_COEFF_EOB_CASE(TX_CLASS_2D);
+@@ -416,7 +418,8 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
+     default: assert(false);
+   }
+ 
+-  if (si == -1 && nz_num <= max_nz_num && sharpness == 0) {
++  if (si == -1 && nz_num <= max_nz_num && sharpness == 0 &&
++      cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
+     update_skip(&accu_rate, accu_dist, &eob, nz_num, nz_ci, rdmult, skip_cost,
+                 non_skip_cost, qcoeff, dqcoeff);
+   }
+diff --git a/common/webmenc.cc b/common/webmenc.cc
+index 0b0ff65af..3df67a3b5 100644
+--- a/common/webmenc.cc
++++ b/common/webmenc.cc
+@@ -109,7 +109,7 @@ int write_webm_file_header(struct WebmOutputContext *webm_ctx,
+ 
+   const uint64_t kTimecodeScale = 1000000;
+   info->set_timecode_scale(kTimecodeScale);
+-  std::string version = "aomenc";
++  std::string version = "aomenc-psy101";
+   if (!webm_ctx->debug) {
+     version.append(std::string(" ") + aom_codec_version_str());
+   }
+diff --git a/examples/svc_encoder_rtc.cc b/examples/svc_encoder_rtc.cc
+index 1152bb0d2..fe929f582 100644
+--- a/examples/svc_encoder_rtc.cc
++++ b/examples/svc_encoder_rtc.cc
+@@ -2064,7 +2064,7 @@ int main(int argc, const char **argv) {
+   aom_codec_control(&codec, AV1E_SET_ENABLE_FILTER_INTRA, 0);
+   aom_codec_control(&codec, AV1E_SET_INTRA_DEFAULT_TX_ONLY, 1);
+ 
+-  aom_codec_control(&codec, AV1E_SET_AUTO_TILES, 1);
++  aom_codec_control(&codec, AV1E_SET_AUTO_TILING, 1);
+ 
+   aom_codec_control(&codec, AV1E_SET_TUNE_CONTENT, app_input.tune_content);
+   if (app_input.tune_content == AOM_CONTENT_SCREEN) {
+diff --git a/test/datarate_test.h b/test/datarate_test.h
+index 5dd2778e7..9f5ad7743 100644
+--- a/test/datarate_test.h
++++ b/test/datarate_test.h
+@@ -55,7 +55,7 @@ class DatarateTest : public ::libaom_test::EncoderTest {
+     denoiser_offon_period_ = -1;
+     tile_columns_ = 0;
+     tile_rows_ = 0;
+-    auto_tiles_ = false;
++    auto_tiling_ = false;
+     screen_mode_ = false;
+     max_perc_spike_ = 1.0;
+     max_perc_spike_high_ = 1.0;
+@@ -76,8 +76,8 @@ class DatarateTest : public ::libaom_test::EncoderTest {
+     if (video->frame() == 0) {
+       encoder->Control(AOME_SET_CPUUSED, set_cpu_used_);
+       encoder->Control(AV1E_SET_AQ_MODE, aq_mode_);
+-      if (auto_tiles_) {
+-        encoder->Control(AV1E_SET_AUTO_TILES, 1);
++      if (auto_tiling_) {
++        encoder->Control(AV1E_SET_AUTO_TILING, 1);
+       } else {
+         encoder->Control(AV1E_SET_TILE_COLUMNS, tile_columns_);
+         encoder->Control(AV1E_SET_TILE_ROWS, tile_rows_);
+@@ -268,7 +268,7 @@ class DatarateTest : public ::libaom_test::EncoderTest {
+   bool speed_change_test_;
+   int tile_columns_;
+   int tile_rows_;
+-  bool auto_tiles_;
++  unsigned int auto_tiling_;
+   bool screen_mode_;
+   double max_perc_spike_;
+   double max_perc_spike_high_;
+diff --git a/test/svc_datarate_test.cc b/test/svc_datarate_test.cc
+index 762a36b5e..9ba8c25d9 100644
+--- a/test/svc_datarate_test.cc
++++ b/test/svc_datarate_test.cc
+@@ -268,8 +268,8 @@ class DatarateTestSVC
+       encoder->Control(AV1E_SET_ENABLE_TPL_MODEL, 0);
+       encoder->Control(AV1E_SET_DELTAQ_MODE, 0);
+       if (cfg_.g_threads > 1) {
+-        if (auto_tiles_) {
+-          encoder->Control(AV1E_SET_AUTO_TILES, 1);
++        if (auto_tiling_) {
++          encoder->Control(AV1E_SET_AUTO_TILING, 1);
+         } else {
+           encoder->Control(AV1E_SET_TILE_COLUMNS, tile_columns_);
+           encoder->Control(AV1E_SET_TILE_ROWS, tile_rows_);
+@@ -1741,7 +1741,7 @@ class DatarateTestSVC
+     const int bitrate_array[2] = { 600, 1200 };
+     cfg_.rc_target_bitrate = bitrate_array[GET_PARAM(4)];
+     ResetModel();
+-    auto_tiles_ = 1;
++    auto_tiling_ = 1;
+     SetTargetBitratesFor1SL2TL();
+     ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
+     CheckDatarate(0.70, 1.45);

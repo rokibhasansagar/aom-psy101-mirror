@@ -38,6 +38,9 @@ typedef struct {
 
   // VMAF model used in VMAF caculations.
   VmafModel *vmaf_model;
+
+  // Stores the resize factor used in VMAF calculations
+  int resize_factor;
 } TuneVMAFInfo;
 
 struct AV1_COMP;

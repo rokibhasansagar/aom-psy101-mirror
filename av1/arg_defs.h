@@ -125,7 +125,7 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t fpmtarg;
   arg_def_t tile_cols;
   arg_def_t tile_rows;
-  arg_def_t auto_tiles;
+  arg_def_t auto_tiling;
   arg_def_t enable_tpl_model;
   arg_def_t enable_keyframe_filtering;
   arg_def_t tile_width;
@@ -185,6 +185,10 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t timing_info;
 #if CONFIG_TUNE_VMAF
   arg_def_t vmaf_model_path;
+  arg_def_t vmaf_quantization;
+  arg_def_t vmaf_preprocessing;
+  arg_def_t vmaf_rd_resize;
+  arg_def_t ssim_vmaf_rd;
 #endif
   arg_def_t partition_info_path;
   arg_def_t enable_rate_guide_deltaq;
@@ -239,6 +243,9 @@ typedef struct av1_codec_arg_definitions {
   arg_def_t sb_qp_sweep;
   arg_def_t enable_low_complexity_decode;
   arg_def_t screen_detection_mode;
+  arg_def_t ssim_rd_mult;
+  arg_def_t luma_bias;
+  arg_def_t fast_decode;
 #endif  // CONFIG_AV1_ENCODER
 } av1_codec_arg_definitions_t;
 

@@ -620,7 +620,8 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
 
   if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIM ||
       cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2) {
+      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
+      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY) {
     av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
                         &x->rdmult);
   }
@@ -635,7 +636,26 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
   else if (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITHOUT_PREPROCESSING ||
            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN ||
            cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
-    av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
+    int vmaf_rdmult = x->rdmult;
+    int ssim_rdmult = x->rdmult;
+
+    if (cpi->oxcf.ssim_vmaf_rd < 100) {
+      av1_set_vmaf_rdmult(cpi, x, bsize, mi_row, mi_col, &vmaf_rdmult);
+    }
+
+    if (cpi->oxcf.ssim_vmaf_rd > 0 && cpi->oxcf.ssim_vmaf_rd < 100) {
+      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                          &ssim_rdmult);
+      float ssim_factor = (float)cpi->oxcf.ssim_vmaf_rd / 100.0f;
+      x->rdmult =
+          (int)((1.0f - ssim_factor) * vmaf_rdmult + ssim_factor * ssim_rdmult);
+    } else if (cpi->oxcf.ssim_vmaf_rd == 100) {
+      av1_set_ssim_rdmult(cpi, &x->errorperbit, bsize, mi_row, mi_col,
+                          &ssim_rdmult);
+      x->rdmult = ssim_rdmult;
+    } else {
+      x->rdmult = vmaf_rdmult;
+    }
   }
 #endif
 #if CONFIG_TUNE_BUTTERAUGLI
@@ -643,8 +663,42 @@ static void setup_block_rdmult(const AV1_COMP *const cpi, MACROBLOCK *const x,
     av1_set_butteraugli_rdmult(cpi, x, bsize, mi_row, mi_col, &x->rdmult);
   }
 #endif
-  if (cpi->oxcf.mode == ALLINTRA) {
+  if (cpi->oxcf.mode == ALLINTRA ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
     x->rdmult = (int)(((int64_t)x->rdmult * x->intra_sb_rdmult_modifier) >> 7);
+  }
+
+  if (cpi->oxcf.luma_bias != 0 &&
+      cpi->oxcf.color_cfg.transfer_characteristics != AOM_CICP_TC_SMPTE_2084 &&
+      cpi->oxcf.color_cfg.transfer_characteristics != AOM_CICP_TC_LOG_100 &&
+      cpi->oxcf.color_cfg.transfer_characteristics !=
+          AOM_CICP_TC_LOG_100_SQRT10) {
+    const double M1 = 2610.0 / 4096 / 4;
+    const double M2 = 2523.0 / 4096 * 128;
+    const double C1 = 3424.0 / 4096;
+    const double C2 = 2413.0 / 4096 * 32;
+    const double C3 = 2392.0 / 4096 * 32;
+
+    const float peak = 255;
+    const float gamma = 2.2f;
+
+    double luma_avg = av1_log_block_avg(x, bsize) / 255.0f;
+
+    const double pq_min = pow(0.0001f / peak, 1.0f / gamma);
+    if (luma_avg < pq_min)
+      luma_avg = pq_min;
+
+    const double a = pow(peak / 10000, M1);
+    const double pq_factor = 1 / pow((C1 + C2 * a) / (1 + C3 * a), M2);
+
+    const double B = pow(10000, M1);
+    double c = pow(peak * pow(luma_avg, gamma), M1);
+    double d = C3 * c + B;
+    double luma_adjustment = B * M1 * M2 * pq_factor * gamma * (C2 - C1 * C3) *
+                             c * pow((C1 * B + C2 * c) / d, M2 - 1) /
+                             (luma_avg * pow(d, 2));
+    x->rdmult = (int)(x->rdmult - log2(luma_adjustment) *  cpi->oxcf.luma_bias);
   }
 
   // Check to make sure that the adjustments above have not caused the
@@ -5565,7 +5619,9 @@ bool av1_rd_pick_partition(AV1_COMP *const cpi, ThreadData *td,
   // Set buffers and offsets.
   av1_set_offsets(cpi, tile_info, x, mi_row, mi_col, bsize);
 
-  if (cpi->oxcf.mode == ALLINTRA) {
+  if (cpi->oxcf.mode == ALLINTRA ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
+      cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
     if (bsize == cm->seq_params->sb_size) {
       double var_min, var_max;
       log_sub_block_var(cpi, x, bsize, &var_min, &var_max);

@@ -3098,7 +3098,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
     }
   }
 
-  av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+  av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
                     q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
                     cpi->oxcf.mode == ALLINTRA, cpi->oxcf.tune_cfg.tuning);
   av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
@@ -3113,7 +3113,7 @@ static int encode_without_recode(AV1_COMP *cpi) {
   if (cpi->sf.rt_sf.overshoot_detection_cbr == FAST_DETECTION_MAXQ &&
       cpi->rc.high_source_sad) {
     if (av1_encodedframe_overshoot_cbr(cpi, &q)) {
-      av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+      av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
                         q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
                         cpi->oxcf.mode == ALLINTRA, cpi->oxcf.tune_cfg.tuning);
       av1_set_speed_features_qindex_dependent(cpi, cpi->oxcf.speed);
@@ -3293,13 +3293,23 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
 #endif
 
 #if !CONFIG_RD_COMMAND
-  // Determine whether to use screen content tools using two fast encoding.
-  if (!cpi->sf.hl_sf.disable_extra_sc_testing && !cpi->use_ducky_encode)
+  if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY ||
+  cpi->oxcf.tune_cfg.content == AOM_CONTENT_PSY101) {
+    // Screen content optimizations are bad for Psy tuning,
+    // disable them and avoid the extra testing to speed us up.
+    FeatureFlags *const features = &cm->features;
+    features->allow_screen_content_tools = 0;
+    features->allow_intrabc = 0;
+    cpi->use_screen_content_tools = 0;
+    cpi->is_screen_content_type = 0;
+  } else if (!cpi->sf.hl_sf.disable_extra_sc_testing) {
+    // Determine whether to use screen content tools using two fast encoding.
     av1_determine_sc_tools_with_encoding(cpi, q);
+  }
 #endif  // !CONFIG_RD_COMMAND
 
 #if CONFIG_TUNE_VMAF
-  if (oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+  if ((oxcf->tune_cfg.tuning == AOM_TUNE_VMAF_NEG_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 1) {
     av1_vmaf_neg_preprocessing(cpi, cpi->unscaled_source);
   }
 #endif
@@ -3372,8 +3382,9 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
     }
 
 #if CONFIG_TUNE_VMAF
-    if (oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-        oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+    if ((oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+         oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+        oxcf->vmaf_quantization == 1) {
       cpi->vmaf_info.original_qindex = q;
       q = av1_get_vmaf_base_qindex(cpi, q);
     }
@@ -3460,7 +3471,7 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
       }
     }
 
-    av1_set_quantizer(cm, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
+    av1_set_quantizer(cpi, q_cfg->qm_minlevel, q_cfg->qm_maxlevel, q,
                       q_cfg->enable_chroma_deltaq, q_cfg->enable_hdr_deltaq,
                       oxcf->mode == ALLINTRA, oxcf->tune_cfg.tuning);
     av1_set_speed_features_qindex_dependent(cpi, oxcf->speed);
@@ -3578,8 +3589,9 @@ static int encode_with_recode_loop(AV1_COMP *cpi, size_t *size, uint8_t *dest,
     }
 
 #if CONFIG_TUNE_VMAF
-    if (oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
-        oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) {
+    if ((oxcf->tune_cfg.tuning >= AOM_TUNE_VMAF_WITH_PREPROCESSING &&
+         oxcf->tune_cfg.tuning <= AOM_TUNE_VMAF_NEG_MAX_GAIN) ||
+        oxcf->vmaf_quantization == 1) {
       q = cpi->vmaf_info.original_qindex;
     }
 #endif
@@ -4289,7 +4301,8 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size, uint8_t *dest,
 
   if (oxcf->tune_cfg.tuning == AOM_TUNE_SSIM ||
       oxcf->tune_cfg.tuning == AOM_TUNE_IQ ||
-      oxcf->tune_cfg.tuning == AOM_TUNE_SSIMULACRA2) {
+      oxcf->tune_cfg.tuning == AOM_TUNE_SSIMULACRA2 ||
+      oxcf->tune_cfg.tuning == AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY) {
     av1_set_mb_ssim_rdmult_scaling(cpi);
   }
 #if CONFIG_SALIENCY_MAP
@@ -4703,11 +4716,11 @@ int av1_receive_raw_frame(AV1_COMP *cpi, aom_enc_frame_flags_t frame_flags,
 
 #if CONFIG_TUNE_VMAF
   if (!is_stat_generation_stage(cpi) &&
-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING) {
+      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_WITH_PREPROCESSING && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 3)) {
     av1_vmaf_frame_preprocessing(cpi, sd);
   }
   if (!is_stat_generation_stage(cpi) &&
-      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN) {
+      ((cpi->oxcf.tune_cfg.tuning == AOM_TUNE_VMAF_MAX_GAIN && cpi->oxcf.override_preprocessing == 0) || cpi->oxcf.vmaf_preprocessing == 2)) {
     av1_vmaf_blk_preprocessing(cpi, sd);
   }
 #endif

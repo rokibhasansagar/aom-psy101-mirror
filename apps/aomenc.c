@@ -232,6 +232,10 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_CHROMA_SUBSAMPLING_Y,
 #if CONFIG_TUNE_VMAF
                                         AV1E_SET_VMAF_MODEL_PATH,
+                                        AOME_SET_VMAF_QUANTIZATION,
+                                        AOME_SET_VMAF_PREPROCESSING,
+                                        AOME_SET_VMAF_RD_RESIZE,
+                                        AOME_SET_SSIM_VMAF_RD,
 #endif
                                         AV1E_SET_DV_COST_UPD_FREQ,
                                         AV1E_SET_PARTITION_INFO_PATH,
@@ -242,6 +246,9 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_ENABLE_RATE_GUIDE_DELTAQ,
                                         AV1E_SET_RATE_DISTRIBUTION_INFO,
                                         AV1E_SET_ENABLE_LOW_COMPLEXITY_DECODE,
+                                        AOME_SET_SSIM_RD_MULT,
+                                        AOME_SET_LUMA_BIAS,
+                                        AOME_SET_FAST_DECODE,
                                         0 };
 
 static const arg_def_t *const main_args[] = {
@@ -444,6 +451,10 @@ static const arg_def_t *const av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.input_chroma_subsampling_y,
 #if CONFIG_TUNE_VMAF
   &g_av1_codec_arg_defs.vmaf_model_path,
+  &g_av1_codec_arg_defs.vmaf_quantization,
+  &g_av1_codec_arg_defs.vmaf_preprocessing,
+  &g_av1_codec_arg_defs.vmaf_rd_resize,
+  &g_av1_codec_arg_defs.ssim_vmaf_rd,
 #endif
   &g_av1_codec_arg_defs.dv_cost_upd_freq,
   &g_av1_codec_arg_defs.partition_info_path,
@@ -454,6 +465,9 @@ static const arg_def_t *const av1_ctrl_args[] = {
   &g_av1_codec_arg_defs.enable_rate_guide_deltaq,
   &g_av1_codec_arg_defs.rate_distribution_info,
   &g_av1_codec_arg_defs.enable_low_complexity_decode,
+  &g_av1_codec_arg_defs.ssim_rd_mult,
+  &g_av1_codec_arg_defs.luma_bias,
+  &g_av1_codec_arg_defs.fast_decode,
   NULL,
 };
 
@@ -466,7 +480,7 @@ static const arg_def_t *const av1_key_val_args[] = {
   &g_av1_codec_arg_defs.sb_qp_sweep,
   &g_av1_codec_arg_defs.dist_metric,
   &g_av1_codec_arg_defs.kf_max_pyr_height,
-  &g_av1_codec_arg_defs.auto_tiles,
+  &g_av1_codec_arg_defs.auto_tiling,
   &g_av1_codec_arg_defs.screen_detection_mode,
   &g_av1_codec_arg_defs.sharpness,
   &g_av1_codec_arg_defs.enable_adaptive_sharpness,
