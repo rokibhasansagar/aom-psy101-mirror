@@ -499,6 +499,7 @@ void av1_rc_init(const AV1EncoderConfig *oxcf, RATE_CONTROL *rc) {
   rc->force_max_q = 0;
   rc->postencode_drop = 0;
   rc->frames_since_scene_change = 0;
+  rc->last_frame_low_source_sad = 0;
 }
 
 static bool check_buffer_below_thresh(AV1_COMP *cpi, int64_t buffer_level,
@@ -1975,11 +1976,10 @@ static int get_active_best_quality(const AV1_COMP *const cpi,
   int *inter_minq;
   ASSIGN_MINQ_TABLE(bit_depth, inter_minq);
   int active_best_quality = 0;
-  const int is_intrl_arf_boost =
-      gf_group->update_type[gf_index] == INTNL_ARF_UPDATE;
-  int is_leaf_frame =
-      !(gf_group->update_type[gf_index] == ARF_UPDATE ||
-        gf_group->update_type[gf_index] == GF_UPDATE || is_intrl_arf_boost);
+  FRAME_UPDATE_TYPE update_type = gf_group->update_type[gf_index];
+  const int is_intrl_arf_boost = update_type == INTNL_ARF_UPDATE;
+  int is_leaf_frame = !(update_type == ARF_UPDATE || update_type == GF_UPDATE ||
+                        is_intrl_arf_boost);
 
   // TODO(jingning): Consider to rework this hack that covers issues incurred
   // in lightfield setting.
@@ -1987,7 +1987,8 @@ static int get_active_best_quality(const AV1_COMP *const cpi,
     is_leaf_frame = !(refresh_frame->golden_frame ||
                       refresh_frame->alt_ref_frame || is_intrl_arf_boost);
   }
-  const int is_overlay_frame = rc->is_src_frame_alt_ref;
+  const int is_overlay_frame =
+      update_type == OVERLAY_UPDATE || update_type == INTNL_OVERLAY_UPDATE;
 
   if (is_leaf_frame || is_overlay_frame) {
     if (rc_mode == AOM_Q) return cq_level;
@@ -2480,6 +2481,10 @@ void av1_rc_postencode_update(AV1_COMP *cpi, uint64_t bytes_used) {
   }
   if (cpi->refresh_frame.golden_frame)
     rc->frame_num_last_gf_refresh = current_frame->frame_number;
+
+  if (rc->frame_source_sad < 10000)
+    rc->last_frame_low_source_sad = rc->frame_number_encoded;
+
   rc->prev_coded_width = cm->width;
   rc->prev_coded_height = cm->height;
   rc->frame_number_encoded++;
@@ -2586,38 +2591,30 @@ int av1_compute_qdelta_by_rate(const AV1_COMP *cpi, FRAME_TYPE frame_type,
 static void set_gf_interval_range(const AV1_COMP *const cpi,
                                   RATE_CONTROL *const rc) {
   const AV1EncoderConfig *const oxcf = &cpi->oxcf;
+  // Set Maximum gf/arf interval
+  rc->max_gf_interval = oxcf->gf_cfg.max_gf_interval;
+  rc->min_gf_interval = oxcf->gf_cfg.min_gf_interval;
+  if (rc->min_gf_interval == 0)
+    rc->min_gf_interval = av1_rc_get_default_min_gf_interval(
+        oxcf->frm_dim_cfg.width, oxcf->frm_dim_cfg.height, cpi->framerate);
+  if (rc->max_gf_interval == 0)
+    rc->max_gf_interval =
+        get_default_max_gf_interval(cpi->framerate, rc->min_gf_interval);
+  /*
+   * Extended max interval for genuinely static scenes like slide shows.
+   * The no.of.stats available in the case of LAP is limited,
+   * hence setting to max_gf_interval.
+   */
+  if (cpi->ppi->lap_enabled)
+    rc->static_scene_max_gf_interval = rc->max_gf_interval + 1;
+  else
+    rc->static_scene_max_gf_interval = MAX_STATIC_GF_GROUP_LENGTH;
 
-  // Special case code for 1 pass fixed Q mode tests
-  if ((has_no_stats_stage(cpi)) && (oxcf->rc_cfg.mode == AOM_Q)) {
-    rc->max_gf_interval = oxcf->gf_cfg.max_gf_interval;
-    rc->min_gf_interval = oxcf->gf_cfg.min_gf_interval;
-    rc->static_scene_max_gf_interval = rc->min_gf_interval + 1;
-  } else {
-    // Set Maximum gf/arf interval
-    rc->max_gf_interval = oxcf->gf_cfg.max_gf_interval;
-    rc->min_gf_interval = oxcf->gf_cfg.min_gf_interval;
-    if (rc->min_gf_interval == 0)
-      rc->min_gf_interval = av1_rc_get_default_min_gf_interval(
-          oxcf->frm_dim_cfg.width, oxcf->frm_dim_cfg.height, cpi->framerate);
-    if (rc->max_gf_interval == 0)
-      rc->max_gf_interval =
-          get_default_max_gf_interval(cpi->framerate, rc->min_gf_interval);
-    /*
-     * Extended max interval for genuinely static scenes like slide shows.
-     * The no.of.stats available in the case of LAP is limited,
-     * hence setting to max_gf_interval.
-     */
-    if (cpi->ppi->lap_enabled)
-      rc->static_scene_max_gf_interval = rc->max_gf_interval + 1;
-    else
-      rc->static_scene_max_gf_interval = MAX_STATIC_GF_GROUP_LENGTH;
+  if (rc->max_gf_interval > rc->static_scene_max_gf_interval)
+    rc->max_gf_interval = rc->static_scene_max_gf_interval;
 
-    if (rc->max_gf_interval > rc->static_scene_max_gf_interval)
-      rc->max_gf_interval = rc->static_scene_max_gf_interval;
-
-    // Clamp min to max
-    rc->min_gf_interval = AOMMIN(rc->min_gf_interval, rc->max_gf_interval);
-  }
+  // Clamp min to max
+  rc->min_gf_interval = AOMMIN(rc->min_gf_interval, rc->max_gf_interval);
 }
 
 void av1_rc_update_framerate(AV1_COMP *cpi, int width, int height) {
@@ -2742,7 +2739,7 @@ void av1_set_target_rate(AV1_COMP *cpi, int width, int height) {
 
 int av1_calc_pframe_target_size_one_pass_vbr(
     const AV1_COMP *const cpi, FRAME_UPDATE_TYPE frame_update_type) {
-  static const int af_ratio = 10;
+  const int af_ratio = is_one_pass_rt_lag_params(cpi) ? 6 : 10;
   const RATE_CONTROL *const rc = &cpi->rc;
   const PRIMARY_RATE_CONTROL *const p_rc = &cpi->ppi->p_rc;
   int64_t target;
@@ -2775,7 +2772,14 @@ int av1_calc_pframe_target_size_one_pass_cbr(
   const RATE_CONTROL *rc = &cpi->rc;
   const PRIMARY_RATE_CONTROL *p_rc = &cpi->ppi->p_rc;
   const RateControlCfg *rc_cfg = &oxcf->rc_cfg;
-  const int64_t diff = p_rc->optimal_buffer_level - p_rc->buffer_level;
+  const RefreshFrameInfo *const refresh_frame = &cpi->refresh_frame;
+  int64_t diff = p_rc->optimal_buffer_level - p_rc->buffer_level;
+  // For refresh alt or golden: keep diff negative to force setting
+  // higher target bandwidth on these frames.
+  // Only realtime mode with lookahead.
+  if (is_one_pass_rt_lag_params(cpi) &&
+      (refresh_frame->alt_ref_frame || refresh_frame->golden_frame))
+    diff = AOMMIN(diff, -p_rc->optimal_buffer_level);
   const int64_t one_pct_bits = 1 + p_rc->optimal_buffer_level / 100;
   int min_frame_target =
       AOMMAX(rc->avg_frame_bandwidth >> 4, FRAME_OVERHEAD_BITS);
@@ -3162,21 +3166,8 @@ static unsigned int estimate_scroll_motion(
   return best_sad;
 }
 
-/*!\brief Check for scene detection, for 1 pass real-time mode.
- *
- * Compute average source sad (temporal sad: between current source and
- * previous source) over a subset of superblocks. Use this is detect big changes
- * in content and set the \c cpi->rc.high_source_sad flag.
- *
- * \ingroup rate_control
- * \param[in]       cpi          Top level encoder structure
- * \param[in]       frame_input  Current and last input source frames
- *
- * \remark Nothing is returned. Instead the flag \c cpi->rc.high_source_sad
- * is set if scene change is detected, and \c cpi->rc.avg_source_sad is updated.
- */
-static void rc_scene_detection_onepass_rt(AV1_COMP *cpi,
-                                          const EncodeFrameInput *frame_input) {
+void av1_rc_scene_detection_onepass_rt(AV1_COMP *cpi,
+                                       const EncodeFrameInput *frame_input) {
   AV1_COMMON *const cm = &cpi->common;
   RATE_CONTROL *const rc = &cpi->rc;
   YV12_BUFFER_CONFIG const *const unscaled_src = frame_input->source;
@@ -3268,7 +3259,7 @@ static void rc_scene_detection_onepass_rt(AV1_COMP *cpi,
       rc->prev_frame_is_dropped || cpi->svc.number_temporal_layers > 1;
   // Store blkwise SAD for later use. Disable for spatial layers for now.
   if (width == cm->render_width && height == cm->render_height &&
-      cpi->svc.number_spatial_layers == 1) {
+      cpi->svc.number_spatial_layers == 1 && !is_one_pass_rt_lag_params(cpi)) {
     if (cpi->src_sad_blk_64x64 == NULL) {
       CHECK_MEM_ERROR(cm, cpi->src_sad_blk_64x64,
                       (uint64_t *)aom_calloc(sb_cols * sb_rows,
@@ -3348,18 +3339,23 @@ static void rc_scene_detection_onepass_rt(AV1_COMP *cpi,
   }
   // Update the high_motion_content_screen_rtc flag on TL0. Avoid the update
   // if too many consecutive frame drops occurred.
+  // The threshold_high_motion is kept to a large value, to account for
+  // mis-detection for scroll for scaled input (where scroll motion can be
+  // subpel and not detected below). The threshold may be improved when better
+  // scroll detection (for subpel) is added.
   const int scale =
-      (unscaled_src->y_width * unscaled_src->y_height > 1920 * 1080) ? 24 : 10;
+      (unscaled_src->y_width * unscaled_src->y_height > 1920 * 1080) ? 30 : 10;
   const uint64_t thresh_high_motion = scale * 64 * 64;
   if (cpi->svc.temporal_layer_id == 0 && rc->drop_count_consec < 3) {
     cpi->rc.high_motion_content_screen_rtc = 0;
-    if (cpi->oxcf.speed >= 11 &&
+    if (cpi->oxcf.speed >= 11 && !is_one_pass_rt_lag_params(cpi) &&
         cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN &&
-        rc->num_col_blscroll_last_tl0 == 0 &&
-        rc->num_row_blscroll_last_tl0 == 0 &&
+        rc->num_col_blscroll_last_tl0 < 5 &&
+        rc->num_row_blscroll_last_tl0 < 5 &&
         rc->percent_blocks_with_motion > 40 &&
         rc->prev_avg_source_sad > thresh_high_motion &&
         rc->avg_source_sad > thresh_high_motion &&
+        rc->frame_number_encoded - rc->last_frame_low_source_sad > 12 &&
         rc->avg_frame_low_motion < 60 && unscaled_src->y_width >= 1280 &&
         unscaled_src->y_height >= 720) {
       cpi->rc.high_motion_content_screen_rtc = 1;
@@ -3831,7 +3827,7 @@ void av1_get_one_pass_rt_params(AV1_COMP *cpi, FRAME_TYPE *const frame_type,
              svc->spatial_layer_id == 0) {
     if (rc->prev_coded_width == cm->width &&
         rc->prev_coded_height == cm->height) {
-      rc_scene_detection_onepass_rt(cpi, frame_input);
+      av1_rc_scene_detection_onepass_rt(cpi, frame_input);
     } else {
       aom_free(cpi->src_sad_blk_64x64);
       cpi->src_sad_blk_64x64 = NULL;
@@ -3862,10 +3858,6 @@ void av1_get_one_pass_rt_params(AV1_COMP *cpi, FRAME_TYPE *const frame_type,
   } else if (is_frame_resize_pending(cpi)) {
     resize_reset_rc(cpi, resize_pending_params->width,
                     resize_pending_params->height, cm->width, cm->height);
-  }
-  if (svc->temporal_layer_id == 0) {
-    rc->num_col_blscroll_last_tl0 = 0;
-    rc->num_row_blscroll_last_tl0 = 0;
   }
   // Set the GF interval and update flag.
   if (!rc->rtc_external_ratectrl)

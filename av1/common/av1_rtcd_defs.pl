@@ -126,7 +126,7 @@ specialize qw/av1_dr_prediction_z3 sse4_1 avx2 neon/;
 
 # FILTER_INTRA predictor functions
 add_proto qw/void av1_filter_intra_predictor/, "uint8_t *dst, ptrdiff_t stride, TX_SIZE tx_size, const uint8_t *above, const uint8_t *left, int mode";
-specialize qw/av1_filter_intra_predictor sse4_1 neon/;
+specialize qw/av1_filter_intra_predictor sse4_1 neon neon_i8mm/;
 
 # High bitdepth functions
 
@@ -611,7 +611,7 @@ if(aom_config("CONFIG_AV1_HIGHBITDEPTH") eq "yes") {
   specialize qw/av1_dist_wtd_convolve_2d ssse3 avx2 neon neon_dotprod neon_i8mm/;
   specialize qw/av1_dist_wtd_convolve_2d_copy sse2 avx2 neon/;
   specialize qw/av1_dist_wtd_convolve_x sse2 avx2 neon neon_dotprod neon_i8mm/;
-  specialize qw/av1_dist_wtd_convolve_y sse2 avx2 neon/;
+  specialize qw/av1_dist_wtd_convolve_y sse2 avx2 neon neon_dotprod neon_i8mm/;
   if(aom_config("CONFIG_AV1_HIGHBITDEPTH") eq "yes") {
     specialize qw/av1_highbd_dist_wtd_convolve_2d sse4_1 avx2 neon sve2/;
     specialize qw/av1_highbd_dist_wtd_convolve_x sse4_1 avx2 neon sve2/;

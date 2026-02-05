@@ -401,7 +401,7 @@ class AV1ConvolveXTest : public AV1ConvolveTest<convolve_x_func> {
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -509,7 +509,7 @@ class AV1ConvolveXIntraBCTest : public AV1ConvolveTest<convolve_x_func> {
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -618,7 +618,7 @@ class AV1ConvolveXHighbdTest : public AV1ConvolveTest<highbd_convolve_x_func> {
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -725,7 +725,7 @@ class AV1ConvolveXHighbdIntraBCTest
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -826,7 +826,7 @@ class AV1ConvolveYTest : public AV1ConvolveTest<convolve_y_func> {
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -925,7 +925,7 @@ class AV1ConvolveYIntraBCTest : public AV1ConvolveTest<convolve_y_func> {
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -1023,7 +1023,7 @@ class AV1ConvolveYHighbdTest : public AV1ConvolveTest<highbd_convolve_y_func> {
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -1122,7 +1122,7 @@ class AV1ConvolveYHighbdIntraBCTest
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", filter, width, height, time1,
+    printf("%d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", filter, width, height, time1,
            time2, time1 / time2);
   }
 };
@@ -1338,7 +1338,7 @@ class AV1Convolve2DTest : public AV1ConvolveTest<convolve_2d_func> {
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d - %d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", h_f, v_f, width, height,
+    printf("%d - %d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", h_f, v_f, width, height,
            time1, time2, time1 / time2);
   }
 };
@@ -1456,7 +1456,7 @@ class AV1Convolve2DIntraBCTest : public AV1ConvolveTest<convolve_2d_func> {
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d - %d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", h_f, v_f, width, height,
+    printf("%d - %d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", h_f, v_f, width, height,
            time1, time2, time1 / time2);
   }
 };
@@ -1581,7 +1581,7 @@ class AV1Convolve2DHighbdTest
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("%d - %d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", h_f, v_f, width, height,
+    printf("%d - %d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", h_f, v_f, width, height,
            time1, time2, time1 / time2);
   }
 };
@@ -1696,7 +1696,7 @@ class AV1Convolve2DHighbdIntraBCTest
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
 
-    printf("%d - %d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n", h_f, v_f, width, height,
+    printf("%d - %d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n", h_f, v_f, width, height,
            time1, time2, time1 / time2);
   }
 };
@@ -2092,6 +2092,18 @@ INSTANTIATE_TEST_SUITE_P(NEON, AV1ConvolveYCompoundTest,
                          BuildLowbdLumaParams(av1_dist_wtd_convolve_y_neon));
 #endif
 
+#if HAVE_NEON_DOTPROD
+INSTANTIATE_TEST_SUITE_P(
+    NEON_DOTPROD, AV1ConvolveYCompoundTest,
+    BuildLowbdLumaParams(av1_dist_wtd_convolve_y_neon_dotprod));
+#endif
+
+#if HAVE_NEON_I8MM
+INSTANTIATE_TEST_SUITE_P(
+    NEON_I8MM, AV1ConvolveYCompoundTest,
+    BuildLowbdLumaParams(av1_dist_wtd_convolve_y_neon_i8mm));
+#endif
+
 #if CONFIG_AV1_HIGHBITDEPTH
 /////////////////////////////////////////////////
 // Compound convolve-y functions (high bit-depth)
@@ -2218,7 +2230,7 @@ class AV1Convolve2DCopyCompoundTest
     }
     aom_usec_timer_mark(&timer);
     const double time2 = static_cast<double>(aom_usec_timer_elapsed(&timer));
-    printf("Dist Weighted: %d %3dx%-3d:%7.2f/%7.2fns (%3.2f)\n",
+    printf("Dist Weighted: %d %3dx%-3d:%7.2f/%7.2fus (%3.2f)\n",
            compound.UseDistWtdCompAvg(), width, height, time1, time2,
            time1 / time2);
   }

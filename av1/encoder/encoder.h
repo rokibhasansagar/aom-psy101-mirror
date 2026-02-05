@@ -34,6 +34,7 @@
 #include "av1/common/timing.h"
 
 #include "av1/encoder/aq_cyclicrefresh.h"
+#include "av1/encoder/av1_ext_ratectrl.h"
 #include "av1/encoder/av1_quantize.h"
 #include "av1/encoder/block.h"
 #include "av1/encoder/context_tree.h"
@@ -3722,6 +3723,16 @@ typedef struct AV1_COMP {
    * ROI map.
    */
   aom_roi_map_t roi;
+
+  /*!
+   * External rate control.
+   */
+  AOM_EXT_RATECTRL ext_ratectrl;
+
+  /*!
+   * Store TPL stats before propagation
+   */
+  AomTplGopStats extrc_tpl_gop_stats;
 } AV1_COMP;
 
 /*!
@@ -4132,7 +4143,8 @@ static inline int is_stat_consumption_stage_twopass(const AV1_COMP *const cpi) {
 static inline int is_stat_consumption_stage(const AV1_COMP *const cpi) {
   return (is_stat_consumption_stage_twopass(cpi) ||
           (cpi->oxcf.pass == AOM_RC_ONE_PASS &&
-           (cpi->compressor_stage == ENCODE_STAGE) && cpi->ppi->lap_enabled));
+           (cpi->compressor_stage == ENCODE_STAGE) && cpi->ppi->lap_enabled &&
+           cpi->oxcf.mode != REALTIME));
 }
 
 // Decide whether 'dv_costs' need to be allocated/stored during the encoding.
@@ -4153,10 +4165,16 @@ static inline bool av1_need_dv_costs(const AV1_COMP *const cpi) {
 static inline int has_no_stats_stage(const AV1_COMP *const cpi) {
   assert(
       IMPLIES(!cpi->ppi->lap_enabled, cpi->compressor_stage == ENCODE_STAGE));
-  return (cpi->oxcf.pass == AOM_RC_ONE_PASS && !cpi->ppi->lap_enabled);
+  return (cpi->oxcf.pass == AOM_RC_ONE_PASS &&
+          (!cpi->ppi->lap_enabled || cpi->oxcf.mode == REALTIME));
 }
 
 /*!\cond */
+
+static inline int is_one_pass_rt_lag_params(const AV1_COMP *cpi) {
+  return cpi->oxcf.pass == AOM_RC_ONE_PASS &&
+         cpi->oxcf.gf_cfg.lag_in_frames > 0 && cpi->oxcf.mode == REALTIME;
+}
 
 static inline int is_one_pass_rt_params(const AV1_COMP *cpi) {
   return has_no_stats_stage(cpi) && cpi->oxcf.gf_cfg.lag_in_frames == 0 &&

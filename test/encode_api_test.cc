@@ -24,6 +24,11 @@
 #include "aom/aom_encoder.h"
 #include "aom/aom_image.h"
 
+#include "test/codec_factory.h"
+#include "test/encode_test_driver.h"
+#include "test/util.h"
+#include "test/video_source.h"
+
 namespace {
 
 #if CONFIG_REALTIME_ONLY
@@ -1644,5 +1649,159 @@ TEST(EncodeAPI, FreezeInternalStateNotAllowedWithNonZeroLag) {
   aom_img_free(image);
   ASSERT_EQ(aom_codec_destroy(&enc), AOM_CODEC_OK);
 }
+
+#if !CONFIG_REALTIME_ONLY
+// This test is based on the issue:449376308. The segfault in
+// av1_update_layer_context_change_config() is triggered
+// by doing svc with nonzero lag_in_frames and good_quality usage.
+// Note good_quality mode is needed because for realtime mode lag_in_frames
+// is forced to 0 in set_encoder_config() .
+TEST(EncodeAPI, Issue449376308) {
+  aom_codec_iface_t *iface = aom_codec_av1_cx();
+  aom_codec_enc_cfg_t cfg;
+  ASSERT_EQ(aom_codec_enc_config_default(iface, &cfg, AOM_USAGE_GOOD_QUALITY),
+            AOM_CODEC_OK);
+  cfg.g_w = 320;
+  cfg.g_h = 240;
+  cfg.g_timebase.num = 1;
+  cfg.g_timebase.den = 30;
+  cfg.rc_target_bitrate = 1000;
+  cfg.g_lag_in_frames = 25;
+  aom_codec_ctx_t enc;
+  ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, 0), AOM_CODEC_OK);
+  // AV1E_SET_SVC_PARAMS
+  aom_svc_params_t svc_params = {};
+  svc_params.number_spatial_layers = 3;
+  svc_params.number_temporal_layers = 2;
+  for (int i = 0; i < AOM_MAX_LAYERS; i++) {
+    svc_params.max_quantizers[i] = 30;
+    svc_params.min_quantizers[i] = 0;
+    svc_params.layer_target_bitrate[i] = 1000;
+  }
+  for (int i = 0; i < AOM_MAX_SS_LAYERS; i++) {
+    svc_params.scaling_factor_num[i] = 1;
+    svc_params.scaling_factor_den[i] = 1;
+  }
+  for (int i = 0; i < AOM_MAX_TS_LAYERS; i++) {
+    svc_params.framerate_factor[i] = 1;
+  }
+  // set_svc_params should fail since lag_in_frames > 0.
+  EXPECT_NE(aom_codec_control(&enc, AV1E_SET_SVC_PARAMS, &svc_params),
+            AOM_CODEC_OK);
+  ASSERT_EQ(aom_codec_destroy(&enc), AOM_CODEC_OK);
+}
+#endif
+
+// This test is based on the issue:449341177. The issue occurs in the
+// codec_destroy after invalid params (quantizer out of range) are passed
+// to the set_svc_params control. The issue can occur for realtime mode
+// with lag_in_frames = 0.
+TEST(EncodeAPI, Issue449341177) {
+  aom_codec_iface_t *iface = aom_codec_av1_cx();
+  aom_codec_enc_cfg_t cfg;
+  ASSERT_EQ(aom_codec_enc_config_default(iface, &cfg, AOM_USAGE_REALTIME),
+            AOM_CODEC_OK);
+  cfg.g_w = 320;
+  cfg.g_h = 240;
+  cfg.rc_target_bitrate = 500;
+  cfg.g_timebase.num = 1;
+  cfg.g_timebase.den = 30;
+  cfg.rc_end_usage = AOM_CBR;
+  cfg.g_lag_in_frames = 0;
+  aom_codec_ctx_t enc;
+  ASSERT_EQ(aom_codec_enc_init(&enc, iface, &cfg, 0), AOM_CODEC_OK);
+  // AV1E_SET_SVC_PARAMS
+  aom_svc_params_t svc_params = {};
+  svc_params.number_spatial_layers = 3;
+  svc_params.number_temporal_layers = 2;
+  for (int i = 0; i < AOM_MAX_LAYERS; i++) {
+    // Set quantizer out of range.
+    svc_params.max_quantizers[i] = 80;
+    svc_params.min_quantizers[i] = 0;
+    svc_params.layer_target_bitrate[i] = 1000;
+  }
+  for (int i = 0; i < AOM_MAX_SS_LAYERS; i++) {
+    svc_params.scaling_factor_num[i] = 1;
+    svc_params.scaling_factor_den[i] = 1;
+  }
+  for (int i = 0; i < AOM_MAX_TS_LAYERS; i++) {
+    svc_params.framerate_factor[i] = 1;
+  }
+  // set_svc_params should fail because svc_params.max_quantizer[i] is set out
+  // of range.
+  EXPECT_NE(aom_codec_control(&enc, AV1E_SET_SVC_PARAMS, &svc_params),
+            AOM_CODEC_OK);
+  ASSERT_EQ(aom_codec_destroy(&enc), AOM_CODEC_OK);
+}
+
+// This test is based on the issue:471095598. For profile 2 444 12 bit,
+// assert is triggered on first frame in intra_mode_search.c, the function
+// av1_count_colors_highbd, for good quality mode.
+// Disabled until the assert issue is fixed.
+TEST(EncodeAPI, DISABLED_Issue471095598) {
+  aom_codec_iface_t *encoder_iface = aom_codec_av1_cx();
+  aom_codec_enc_cfg_t cfg;
+  ASSERT_EQ(
+      aom_codec_enc_config_default(encoder_iface, &cfg, AOM_USAGE_GOOD_QUALITY),
+      AOM_CODEC_OK);
+  cfg.g_profile = 2;
+  cfg.g_bit_depth = AOM_BITS_12;
+  cfg.g_lag_in_frames = 0;
+  aom_codec_ctx_t encoder;
+  ASSERT_EQ(aom_codec_enc_init(&encoder, encoder_iface, &cfg,
+                               AOM_CODEC_USE_HIGHBITDEPTH),
+            AOM_CODEC_OK);
+  aom_image_t *img = CreateGrayImage(AOM_IMG_FMT_I44416, cfg.g_w, cfg.g_h);
+  ASSERT_EQ(aom_codec_encode(&encoder, img, 0, 1, 0), AOM_CODEC_OK);
+  aom_img_free(img);
+  ASSERT_EQ(aom_codec_destroy(&encoder), AOM_CODEC_OK);
+}
+
+#if !CONFIG_REALTIME_ONLY
+class GetGopInfoTest : public ::libaom_test::EncoderTest,
+                       public ::testing::Test {
+ protected:
+  GetGopInfoTest() : EncoderTest(&::libaom_test::kAV1) {}
+  ~GetGopInfoTest() override = default;
+
+  void SetUp() override {
+    InitializeConfig(::libaom_test::kTwoPassGood);
+    cfg_.g_w = 176;
+    cfg_.g_h = 144;
+    cfg_.rc_target_bitrate = 200;
+    cfg_.g_lag_in_frames = 25;
+    cfg_.g_limit = kFrameLimit;
+  }
+
+  void PreEncodeFrameHook(::libaom_test::VideoSource *video,
+                          ::libaom_test::Encoder *encoder) override {
+    if (video->frame() == 0) {
+      encoder->Control(AOME_SET_CPUUSED, 3);
+    }
+  }
+
+  void PostEncodeFrameHook(::libaom_test::Encoder *encoder) override {
+    if (cfg_.g_pass == AOM_RC_FIRST_PASS) return;
+    encoder->Control(AV1E_GET_GOP_INFO, &gop_info_);
+  }
+
+  void FramePktHook(const aom_codec_cx_pkt_t * /*pkt*/) override {
+    // This is verified here (not in PostEncodeFrameHook) because
+    // PostEncodeFrameHook is also called when encoder is reading frames into
+    // lookahead buffer, when GOP structure hasn't been determined.
+    ASSERT_GT(gop_info_.gop_size, 0);
+  }
+
+  aom_gop_info_t gop_info_;
+  static constexpr int kFrameLimit = 10;
+};
+
+TEST_F(GetGopInfoTest, GetGopInfo) {
+  ::libaom_test::RandomVideoSource video;
+  video.SetSize(cfg_.g_w, cfg_.g_h);
+  video.set_limit(kFrameLimit);
+  ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
+}
+#endif  // !CONFIG_REALTIME_ONLY
 
 }  // namespace
