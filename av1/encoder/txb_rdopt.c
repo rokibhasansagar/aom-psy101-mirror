@@ -128,13 +128,14 @@ static AOM_FORCE_INLINE void update_coeff_simple(
 }
 
 static AOM_FORCE_INLINE void update_coeff_eob(
-    int *accu_rate, int64_t *accu_dist, int *eob, int *nz_num, int *nz_ci,
-    int si, TX_SIZE tx_size, TX_CLASS tx_class, int bhl, int width,
-    int dc_sign_ctx, int64_t rdmult, int shift, const int16_t *dequant,
-    const int16_t *scan, const LV_MAP_EOB_COST *txb_eob_costs,
-    const LV_MAP_COEFF_COST *txb_costs, const tran_low_t *tcoeff,
-    tran_low_t *qcoeff, tran_low_t *dqcoeff, uint8_t *levels, int sharpness,
-    const qm_val_t *iqmatrix, const qm_val_t *qmatrix) {
+    const struct AV1_COMP *cpi, int *accu_rate, int64_t *accu_dist, int *eob,
+    int *nz_num, int *nz_ci, int si, TX_SIZE tx_size, TX_CLASS tx_class,
+    int bhl, int width, int dc_sign_ctx, int64_t rdmult, int shift,
+    const int16_t *dequant, const int16_t *scan,
+    const LV_MAP_EOB_COST *txb_eob_costs, const LV_MAP_COEFF_COST *txb_costs,
+    const tran_low_t *tcoeff, tran_low_t *qcoeff, tran_low_t *dqcoeff,
+    uint8_t *levels, int sharpness, const qm_val_t *iqmatrix,
+    const qm_val_t *qmatrix) {
   const int dqv = get_dqv(dequant, scan[si], iqmatrix);
   assert(si != *eob - 1);
   const int ci = scan[si];
@@ -208,7 +209,7 @@ static AOM_FORCE_INLINE void update_coeff_eob(
     const int qc_threshold = (si <= 5) ? 2 : 1;
     const int allow_lower_qc = sharpness ? abs_qc > qc_threshold : 1;
 
-    if (allow_lower_qc) {
+    if (allow_lower_qc && cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
       if (rd_low < rd) {
         lower_level = 1;
         rd = rd_low;
@@ -217,7 +218,8 @@ static AOM_FORCE_INLINE void update_coeff_eob(
       }
     }
 
-    if ((sharpness == 0 || new_eob >= 5) && rd_new_eob < rd) {
+    if ((sharpness == 0 || new_eob >= 5) && rd_new_eob < rd &&
+        cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
       for (int ni = 0; ni < *nz_num; ++ni) {
         int last_ci = nz_ci[ni];
         levels[get_padded_idx(last_ci, bhl)] = 0;
@@ -342,16 +344,16 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   const LV_MAP_EOB_COST *txb_eob_costs =
       &coeff_costs->eob_costs[eob_multi_size][plane_type];
 
-  // For the IQ and SSIMULACRA 2 tunings, increase rshift from 2 to 4.
+  // For the IQ and SSIMULACRA 2 tunings, increase rshift from 5 to 7.
   // This biases trellis quantization towards keeping more coefficients, and
   // together with the IQ and SSIMULACRA2 rdmult adjustment in
   // av1_compute_rd_mult_based_on_qindex(), this helps preserve image
   // features (like repeating patterns and camera noise/film grain), which
   // improves SSIMULACRA 2 scores.
   const int rshift = (cpi->oxcf.tune_cfg.tuning == AOM_TUNE_IQ ||
-                      cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2)
-                         ? 7
-                         : 5;
+    cpi->oxcf.tune_cfg.tuning == AOM_TUNE_SSIMULACRA2)
+       ? 7
+       : 5;
 
   const int64_t rdmult = ROUND_POWER_OF_TWO(
       (int64_t)x->rdmult * (8 - sharpness) *
@@ -398,15 +400,15 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     --si;
   }
 
-#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                            \
-  case tx_class_literal:                                                   \
-    for (; si >= 0 && nz_num <= max_nz_num; --si) {                        \
-      update_coeff_eob(&accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si,   \
-                       tx_size, tx_class_literal, bhl, width,              \
-                       txb_ctx->dc_sign_ctx, rdmult, shift, dequant, scan, \
-                       txb_eob_costs, txb_costs, tcoeff, qcoeff, dqcoeff,  \
-                       levels, sharpness, iqmatrix, qmatrix);              \
-    }                                                                      \
+#define UPDATE_COEFF_EOB_CASE(tx_class_literal)                               \
+  case tx_class_literal:                                                      \
+    for (; si >= 0 && nz_num <= max_nz_num; --si) {                           \
+      update_coeff_eob(cpi, &accu_rate, &accu_dist, &eob, &nz_num, nz_ci, si, \
+                       tx_size, tx_class_literal, bhl, width,                 \
+                       txb_ctx->dc_sign_ctx, rdmult, shift, dequant, scan,    \
+                       txb_eob_costs, txb_costs, tcoeff, qcoeff, dqcoeff,     \
+                       levels, sharpness, iqmatrix, qmatrix);                 \
+    }                                                                         \
     break
   switch (tx_class) {
     UPDATE_COEFF_EOB_CASE(TX_CLASS_2D);
@@ -416,7 +418,8 @@ int av1_optimize_txb(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     default: assert(false);
   }
 
-  if (si == -1 && nz_num <= max_nz_num && sharpness == 0) {
+  if (si == -1 && nz_num <= max_nz_num && sharpness == 0 &&
+      cpi->oxcf.tune_cfg.content != AOM_CONTENT_PSY101) {
     update_skip(&accu_rate, accu_dist, &eob, nz_num, nz_ci, rdmult, skip_cost,
                 non_skip_cost, qcoeff, dqcoeff);
   }

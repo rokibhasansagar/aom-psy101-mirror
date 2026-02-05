@@ -504,6 +504,8 @@ enum aome_enc_control_id {
    *  - AOM_CONTENT_DEFAULT = Regular video content (default)
    *  - AOM_CONTENT_SCREEN  = Screen capture content
    *  - AOM_CONTENT_FILM = Film content
+   *  - AOM_CONTENT_PSY = Psychovisual optimizations for video
+   *  - AOM_CONTENT_PSY101 = Further psychovisual optimizations for video
    */
   AV1E_SET_TUNE_CONTENT = 43,
 
@@ -1564,7 +1566,7 @@ enum aome_enc_control_id {
    * settings set via SET_TILE_COLUMNS/ROWS. If the value is 0 no change is
    * done, the previous setting (if any) for tile_columns/rows is preserved.
    */
-  AV1E_SET_AUTO_TILES = 166,
+  AV1E_SET_AUTO_TILING = 166,
 
   /*!\brief Codec control to get the high motion content flag, used for
    * screen content realtime (RTC) encoding, int * parameter.
@@ -1629,6 +1631,26 @@ enum aome_enc_control_id {
    * args: a pointer to aom_gop_info_t
    */
   AV1E_GET_GOP_INFO,
+  /*!\brief Control SSIM rdmult */
+  AOME_SET_SSIM_RD_MULT = 173,
+
+  /*!\brief Control luma bias */
+  AOME_SET_LUMA_BIAS = 174,
+
+  /*!\brief Control VMAF Quantization */
+  AOME_SET_VMAF_QUANTIZATION = 175,
+
+  /*!\brief Control VMAF Preprocessing */
+  AOME_SET_VMAF_PREPROCESSING = 176,
+
+  /*!\brief Control VMAF RD resize factor */
+  AOME_SET_VMAF_RD_RESIZE = 177,
+
+  /*!\brief Control the share of SSIM RD to replace VMAF RD */
+  AOME_SET_SSIM_VMAF_RD = 178,
+
+  /*!\brief Improve decoding performance of the aomenc-generated bitstream */
+  AOME_SET_FAST_DECODE = 179,
 
   // Any new encoder control IDs should be added above.
   // Maximum allowed encoder control ID is 229.
@@ -1708,6 +1730,8 @@ typedef enum {
   AOM_CONTENT_DEFAULT,
   AOM_CONTENT_SCREEN,
   AOM_CONTENT_FILM,
+  AOM_CONTENT_PSY,
+  AOM_CONTENT_PSY101,
   AOM_CONTENT_INVALID
 } aom_tune_content;
 
@@ -1770,6 +1794,7 @@ typedef enum {
   /* Tune that optimizes for maximum SSIMULACRA 2 scores. Shares the rdmult code
      with AOM_TUNE_SSIM. */
   AOM_TUNE_SSIMULACRA2 = 11,
+  AOM_TUNE_IMAGE_PERCEPTUAL_QUALITY = 12,
 } aom_tune_metric;
 
 /*!\brief Distortion metric to use for RD optimization.
@@ -2365,8 +2390,8 @@ AOM_CTRL_USE_TYPE(AV1E_SET_SVC_FRAME_DROP_MODE, unsigned int)
 AOM_CTRL_USE_TYPE(AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR, int)
 #define AOM_CTRL_AV1E_SET_MAX_CONSEC_FRAME_DROP_CBR
 
-AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILES, unsigned int)
-#define AOM_CTRL_AV1E_SET_AUTO_TILES
+AOM_CTRL_USE_TYPE(AV1E_SET_AUTO_TILING, unsigned int)
+#define AOM_CTRL_AV1E_SET_AUTO_TILING
 
 AOM_CTRL_USE_TYPE(AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC, int *)
 #define AOM_CTRL_AV1E_GET_HIGH_MOTION_CONTENT_SCREEN_RTC
@@ -2392,6 +2417,26 @@ AOM_CTRL_USE_TYPE(AV1E_SET_EXTERNAL_RATE_CONTROL, aom_rc_funcs_t *)
 
 AOM_CTRL_USE_TYPE(AV1E_GET_GOP_INFO, aom_gop_info_t *)
 #define AOM_CTRL_AV1E_GET_GOP_INFO
+AOM_CTRL_USE_TYPE(AOME_SET_SSIM_RD_MULT, int)
+#define AOM_CTRL_AOME_SET_SSIM_RD_MULT
+
+AOM_CTRL_USE_TYPE(AOME_SET_LUMA_BIAS, int)
+#define AOM_CTRL_AOME_SET_LUMA_BIAS
+
+AOM_CTRL_USE_TYPE(AOME_SET_VMAF_QUANTIZATION, int)
+#define AOM_CTRL_AOME_SET_VMAF_QUANTIZATION
+
+AOM_CTRL_USE_TYPE(AOME_SET_VMAF_PREPROCESSING, int)
+#define AOM_CTRL_AOME_SET_VMAF_PREPROCESSING
+
+AOM_CTRL_USE_TYPE(AOME_SET_VMAF_RD_RESIZE, unsigned int)
+#define AOM_CTRL_AOME_SET_VMAF_RD_RESIZE
+
+AOM_CTRL_USE_TYPE(AOME_SET_SSIM_VMAF_RD, unsigned int)
+#define AOM_CTRL_AOME_SET_SSIM_VMAF_RD
+
+AOM_CTRL_USE_TYPE(AOME_SET_FAST_DECODE, int)
+#define AOM_CTRL_AOME_SET_FAST_DECODE
 
 /*!\endcond */
 /*! @} - end defgroup aom_encoder */

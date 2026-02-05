@@ -2108,7 +2108,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
       // Any 64-pt transforms only preserves half the coefficients.
       // Therefore transform domain distortion is not valid for these
       // transform sizes.
-      (txsize_sqr_up_map[tx_size] != TX_64X64) &&
+      txsize_sqr_up_map[tx_size] != TX_64X64 &&
       // Use pixel domain distortion for DC only blocks
       !dc_only_blk;
   // Flag to indicate if an extra calculation of distortion in the pixel domain

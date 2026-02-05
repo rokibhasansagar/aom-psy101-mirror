@@ -268,8 +268,8 @@ class DatarateTestSVC
       encoder->Control(AV1E_SET_ENABLE_TPL_MODEL, 0);
       encoder->Control(AV1E_SET_DELTAQ_MODE, 0);
       if (cfg_.g_threads > 1) {
-        if (auto_tiles_) {
-          encoder->Control(AV1E_SET_AUTO_TILES, 1);
+        if (auto_tiling_) {
+          encoder->Control(AV1E_SET_AUTO_TILING, 1);
         } else {
           encoder->Control(AV1E_SET_TILE_COLUMNS, tile_columns_);
           encoder->Control(AV1E_SET_TILE_ROWS, tile_rows_);
@@ -1781,7 +1781,7 @@ class DatarateTestSVC
     const int bitrate_array[2] = { 600, 1200 };
     cfg_.rc_target_bitrate = bitrate_array[GET_PARAM(4)];
     ResetModel();
-    auto_tiles_ = 1;
+    auto_tiling_ = 1;
     SetTargetBitratesFor1SL2TL();
     ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
     CheckDatarate(0.70, 1.45);
